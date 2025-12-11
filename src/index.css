@@ -14,3 +14,12 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* Smooth background transitions for Focus Mode */
+.transition-opacity {
+  transition-property: opacity;
+}
+
+.duration-2000 {
+  transition-duration: 2000ms;
+}
