@@ -1599,8 +1599,8 @@ const ZikrGame = () => {
       });
     }
     
-    // Track phrase count for achievements (Focus and Asma modes only, NOT Tasbih)
-    if ((gameMode === 'focus' || gameMode === 'asma') && currentUser && currentUser.userId && phraseDataId) {
+    // Track phrase count for achievements (Focus, Asma, AND Tasbih modes)
+    if ((gameMode === 'focus' || gameMode === 'asma' || gameMode === 'tasbih') && currentUser && currentUser.userId && phraseDataId) {
       const oldCount = (currentUser.phraseCounts || {})[phraseDataId] || 0;
       const newCount = oldCount + 1;
       
@@ -1608,12 +1608,12 @@ const ZikrGame = () => {
         ...currentUser,
         phraseCounts: {
           ...(currentUser.phraseCounts || {}),
-          [phraseDataId]: newCount
+          [phraseDataId]: newCount  // Increment phrase count for achievements
         },
         dailyPoints: gameMode === 'focus' ? (currentUser.dailyPoints || 0) + points : (currentUser.dailyPoints || 0)
       };
       
-      console.log(`[PHRASE COUNT] ID ${phraseDataId}: ${oldCount} → ${newCount}`);
+      console.log(`[PHRASE COUNT] Mode: ${gameMode}, Phrase ID: ${phraseDataId}, Count: ${oldCount} → ${newCount}`);
       
       // Save to Firebase (non-blocking)
       incrementPhraseCount(currentUser.userId, phraseDataId, oldCount);
