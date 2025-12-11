@@ -647,6 +647,7 @@ const ZikrGame = () => {
   
   // Leaderboard state
   const [leaderboardData, setLeaderboardData] = useState([]);
+  const [leaderboardUserContext, setLeaderboardUserContext] = useState([]);
 
   const gameLoopRef = useRef(null);
   const nextPhraseIdRef = useRef(0);
@@ -734,9 +735,10 @@ const ZikrGame = () => {
   
   // Load leaderboard from Firebase
   const loadLeaderboard = async () => {
-    const result = await getLeaderboard(10);
+    const result = await getLeaderboard(currentUser?.userId || null);
     if (result.success) {
       setLeaderboardData(result.leaderboard);
+      setLeaderboardUserContext(result.userContext || []);
     } else {
       console.error('Failed to load leaderboard:', result.error);
     }
@@ -1127,6 +1129,13 @@ const ZikrGame = () => {
   // Speed scale: 1 (slowest) to 10 (fastest) - Starting at 3
   const getSpeed = () => {
     if (!gameStartTimeRef.current) return 0.3;
+    
+    // Asma ul Husna Mode: Fixed speed at Level 5 (0.5)
+    if (gameModeRef.current === 'asma') {
+      return 0.5; // Fixed speed, no increase over time
+    }
+    
+    // Focus and Tasbih Modes: Gradual speed increase
     const elapsed = (Date.now() - gameStartTimeRef.current) / 1000; // seconds
     const baseSpeed = 0.3; // Level 3 speed (30% of max speed 1.0)
     const speedIncrease = Math.floor(elapsed / 40) * 0.05; // Very gradual increase every 40 seconds
@@ -1469,32 +1478,62 @@ const ZikrGame = () => {
           console.log(`🎉 Unlocking ${currentMode === 'asma' ? 'name' : 'phrase'} ${item.id}: ${item.transliteration} at ${currentTotal} points!`);
           previouslyUnlockedRef.current.add(item.id);
           
-          // Mark as newly unlocked FIRST (will show golden for first 3 appearances)
-          setNewlyUnlockedPhrases(prev => {
-            const updated = { ...prev, [item.id]: 0 };
-            
-            // Then immediately spawn the newly unlocked item in golden!
-            setTimeout(() => {
-              const newPhrase = {
-                id: nextPhraseIdRef.current++,
-                data: item,
-                position: -20,
-                verticalPosition: Math.random() * 60 + 20,
-                isNewlyUnlocked: true,
-                phraseDataId: item.id
-              };
-              setPhrases(prevPhrases => [...prevPhrases, newPhrase]);
-              setTotalPhrasesAppeared(prevTotal => prevTotal + 1);
+          // Mark as newly unlocked based on mode
+          if (currentMode === 'focus') {
+            // Focus Mode - mark in newlyUnlockedPhrases
+            setNewlyUnlockedPhrases(prev => {
+              const updated = { ...prev, [item.id]: 0 };
               
-              // Increment the counter for this newly unlocked item
-              setNewlyUnlockedPhrases(prev2 => ({
-                ...prev2,
-                [item.id]: (prev2[item.id] || 0) + 1
-              }));
-            }, 100);
-            
-            return updated;
-          });
+              // Then immediately spawn the newly unlocked item in golden!
+              setTimeout(() => {
+                const newPhrase = {
+                  id: nextPhraseIdRef.current++,
+                  data: item,
+                  position: -20,
+                  verticalPosition: Math.random() * 60 + 20,
+                  isNewlyUnlocked: true,
+                  phraseDataId: item.id
+                };
+                setPhrases(prevPhrases => [...prevPhrases, newPhrase]);
+                setTotalPhrasesAppeared(prevTotal => prevTotal + 1);
+                
+                // Increment the counter for this newly unlocked item
+                setNewlyUnlockedPhrases(prev2 => ({
+                  ...prev2,
+                  [item.id]: (prev2[item.id] || 0) + 1
+                }));
+              }, 100);
+              
+              return updated;
+            });
+          } else if (currentMode === 'asma') {
+            // Asma Mode - mark in newlyUnlockedAsmaNames
+            setNewlyUnlockedAsmaNames(prev => {
+              const updated = { ...prev, [item.id]: 0 };
+              
+              // Then immediately spawn the newly unlocked name in golden!
+              setTimeout(() => {
+                const newPhrase = {
+                  id: nextPhraseIdRef.current++,
+                  data: item,
+                  position: -20,
+                  verticalPosition: Math.random() * 60 + 20,
+                  isNewlyUnlocked: true,
+                  phraseDataId: item.id
+                };
+                setPhrases(prevPhrases => [...prevPhrases, newPhrase]);
+                setTotalPhrasesAppeared(prevTotal => prevTotal + 1);
+                
+                // Increment the counter for this newly unlocked name
+                setNewlyUnlockedAsmaNames(prev2 => ({
+                  ...prev2,
+                  [item.id]: (prev2[item.id] || 0) + 1
+                }));
+              }, 100);
+              
+              return updated;
+            });
+          }
         }
       });
       
@@ -2272,9 +2311,12 @@ const ZikrGame = () => {
               >
                 <div className={`rounded-2xl shadow-xl px-6 py-4 transition-shadow duration-200 border-2 ${
                   isNewlyUnlocked 
-                    ? 'bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-300 border-yellow-500 shadow-2xl shadow-yellow-400/50' 
+                    ? 'bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-300 border-yellow-500 animate-pulse' 
                     : `bg-gradient-to-r ${colors.bg} ${colors.border}`
-                }`}>
+                }`} style={isNewlyUnlocked ? {
+                  boxShadow: '0 0 30px gold, 0 0 60px gold, 0 0 90px gold',
+                  animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                } : {}}>
                   <p className={`text-3xl font-bold text-center ${isNewlyUnlocked ? 'text-yellow-900' : colors.text}`} style={{ fontFamily: 'Arial' }}>
                     {phrase.data.arabic}
                   </p>
@@ -2609,13 +2651,15 @@ const ZikrGame = () => {
 
           {/* Leaderboard List */}
           <div className="bg-white rounded-3xl shadow-lg p-6">
+            {/* Top 10 Section */}
             <div className="space-y-3">
-              {leaderboardData.map((user, index) => (
+              <h3 className="text-lg font-bold text-gray-700 mb-4">🏆 Top 10</h3>
+              {leaderboardData.map((user) => (
                 <div
-                  key={user.username}
+                  key={user.userId}
                   className={`rounded-xl p-4 border-2 ${
-                    user.username === currentUser?.username
-                      ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-300'
+                    user.isCurrentUser
+                      ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-400 shadow-md'
                       : 'bg-gray-50 border-gray-200'
                   }`}
                 >
@@ -2623,19 +2667,22 @@ const ZikrGame = () => {
                     <div className="flex items-center gap-4">
                       <div
                         className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${
-                          index === 0
+                          user.rank === 1
                             ? 'bg-yellow-400 text-yellow-900'
-                            : index === 1
+                            : user.rank === 2
                             ? 'bg-gray-300 text-gray-700'
-                            : index === 2
+                            : user.rank === 3
                             ? 'bg-orange-400 text-orange-900'
                             : 'bg-gray-200 text-gray-600'
                         }`}
                       >
-                        {index + 1}
+                        {user.rank}
                       </div>
                       <div>
-                        <p className="font-bold text-gray-800">{user.username}</p>
+                        <p className="font-bold text-gray-800">
+                          {user.username}
+                          {user.isCurrentUser && <span className="ml-2 text-emerald-600 text-sm">(You)</span>}
+                        </p>
                         <div className="flex items-center gap-3 text-sm text-gray-600">
                           <span className="flex items-center gap-1">
                             <Trophy size={14} />
@@ -2654,7 +2701,7 @@ const ZikrGame = () => {
                         </div>
                       </div>
                     </div>
-                    {index === 0 && <Crown className="text-yellow-500" size={24} />}
+                    {user.rank === 1 && <Crown className="text-yellow-500" size={24} />}
                   </div>
                 </div>
               ))}
@@ -2665,6 +2712,61 @@ const ZikrGame = () => {
                 </div>
               )}
             </div>
+
+            {/* User Context Section (if user is not in top 10) */}
+            {leaderboardUserContext.length > 0 && (
+              <>
+                <div className="my-6 flex items-center gap-3">
+                  <div className="flex-1 h-px bg-gray-300"></div>
+                  <span className="text-gray-500 text-sm">•••</span>
+                  <div className="flex-1 h-px bg-gray-300"></div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-lg font-bold text-gray-700 mb-4">📍 Your Position</h3>
+                  {leaderboardUserContext.map((user) => (
+                    <div
+                      key={user.userId}
+                      className={`rounded-xl p-4 border-2 ${
+                        user.isCurrentUser
+                          ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-400 shadow-md'
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg bg-gray-200 text-gray-600">
+                            {user.rank}
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-800">
+                              {user.username}
+                              {user.isCurrentUser && <span className="ml-2 text-emerald-600 text-sm">(You)</span>}
+                            </p>
+                            <div className="flex items-center gap-3 text-sm text-gray-600">
+                              <span className="flex items-center gap-1">
+                                <Trophy size={14} />
+                                {user.totalPoints}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Medal size={14} />
+                                {user.achievements}
+                              </span>
+                              {user.currentStreak > 0 && (
+                                <span className="flex items-center gap-1 text-orange-600">
+                                  <Flame size={14} />
+                                  {user.currentStreak}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
