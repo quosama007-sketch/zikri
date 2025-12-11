@@ -637,6 +637,14 @@ const ZikrGame = () => {
   const [backgroundMessage, setBackgroundMessage] = useState('');
   const lastBackgroundRef = useRef(null);
   
+  // Dynamic Background & Audio System (Focus Mode)
+  const [currentBackgroundIndex, setCurrentBackgroundIndex] = useState(1);
+  const [isAudioMuted, setIsAudioMuted] = useState(false);
+  const [isAudioLoaded, setIsAudioLoaded] = useState(false);
+  const audioRef = useRef(null);
+  const nextAudioRef = useRef(null); // For preloading
+  const isFadingRef = useRef(false);
+  
   // Leaderboard state
   const [leaderboardData, setLeaderboardData] = useState([]);
 
@@ -904,6 +912,177 @@ const ZikrGame = () => {
   };
 
   // Get dynamic background based on total points (Focus Mode only)
+  // ===== DYNAMIC BACKGROUND & AUDIO SYSTEM (FOCUS MODE) =====
+  
+  // Calculate background index based on session score (1-11)
+  const getBackgroundIndex = (score) => {
+    // 0-799 → 1, 800-1599 → 2, 1600-2399 → 3, ... 8000+ → 11
+    return Math.min(Math.floor(score / 800) + 1, 11);
+  };
+  
+  // Fade out audio smoothly
+  const fadeOutAudio = (audio, duration = 1000) => {
+    return new Promise((resolve) => {
+      if (!audio || audio.paused) {
+        resolve();
+        return;
+      }
+      
+      const startVolume = audio.volume;
+      const step = startVolume / (duration / 50); // 50ms intervals
+      
+      const fadeInterval = setInterval(() => {
+        if (audio.volume > step) {
+          audio.volume = Math.max(0, audio.volume - step);
+        } else {
+          audio.volume = 0;
+          audio.pause();
+          clearInterval(fadeInterval);
+          resolve();
+        }
+      }, 50);
+    });
+  };
+  
+  // Fade in audio smoothly
+  const fadeInAudio = (audio, targetVolume = 0.5, duration = 1000) => {
+    return new Promise((resolve) => {
+      if (!audio) {
+        resolve();
+        return;
+      }
+      
+      audio.volume = 0;
+      audio.play().catch(err => {
+        console.log('[AUDIO] Play prevented:', err);
+        resolve();
+      });
+      
+      const step = targetVolume / (duration / 50); // 50ms intervals
+      
+      const fadeInterval = setInterval(() => {
+        if (audio.volume < targetVolume - step) {
+          audio.volume = Math.min(targetVolume, audio.volume + step);
+        } else {
+          audio.volume = targetVolume;
+          clearInterval(fadeInterval);
+          resolve();
+        }
+      }, 50);
+    });
+  };
+  
+  // Transition to new background and audio
+  const transitionBackgroundAndAudio = async (newIndex) => {
+    if (isFadingRef.current || newIndex === currentBackgroundIndex) return;
+    
+    isFadingRef.current = true;
+    console.log(`[BG/AUDIO] Transitioning from ${currentBackgroundIndex} to ${newIndex}`);
+    
+    // Fade out current audio
+    if (audioRef.current && !audioRef.current.paused) {
+      await fadeOutAudio(audioRef.current, 1500);
+    }
+    
+    // Update background index (triggers CSS transition)
+    setCurrentBackgroundIndex(newIndex);
+    
+    // Load and fade in new audio
+    if (!isAudioMuted && gameMode === 'focus' && screen === 'game') {
+      const newAudio = new Audio(`/assets/audio/${newIndex}.mp3`);
+      newAudio.loop = true;
+      newAudio.volume = 0;
+      
+      // Preload next audio for smoother transitions
+      if (newIndex < 11) {
+        nextAudioRef.current = new Audio(`/assets/audio/${newIndex + 1}.mp3`);
+        nextAudioRef.current.preload = 'auto';
+      }
+      
+      // Replace old audio ref
+      audioRef.current = newAudio;
+      
+      // Fade in new audio
+      await fadeInAudio(newAudio, 0.5, 1500);
+    }
+    
+    isFadingRef.current = false;
+  };
+  
+  // Monitor session score and update background/audio (Focus Mode only)
+  useEffect(() => {
+    if (gameMode === 'focus' && screen === 'game') {
+      const newIndex = getBackgroundIndex(sessionScore);
+      if (newIndex !== currentBackgroundIndex) {
+        transitionBackgroundAndAudio(newIndex);
+      }
+    }
+  }, [sessionScore, gameMode, screen]);
+  
+  // Initialize audio when game starts (Focus Mode)
+  useEffect(() => {
+    if (gameMode === 'focus' && screen === 'game' && !isAudioMuted) {
+      const initAudio = async () => {
+        // Start with background 1 audio
+        const audio = new Audio('/assets/audio/1.mp3');
+        audio.loop = true;
+        audio.volume = 0;
+        audioRef.current = audio;
+        
+        // Preload background 2 audio
+        nextAudioRef.current = new Audio('/assets/audio/2.mp3');
+        nextAudioRef.current.preload = 'auto';
+        
+        // Fade in initial audio
+        await fadeInAudio(audio, 0.5, 1500);
+        setIsAudioLoaded(true);
+      };
+      
+      initAudio();
+    }
+    
+    // Cleanup when leaving game
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (nextAudioRef.current) {
+        nextAudioRef.current = null;
+      }
+      setIsAudioLoaded(false);
+    };
+  }, [gameMode, screen]);
+  
+  // Handle audio mute/unmute
+  const toggleAudioMute = async () => {
+    if (isAudioMuted) {
+      // Unmute: fade in current audio
+      setIsAudioMuted(false);
+      if (audioRef.current) {
+        await fadeInAudio(audioRef.current, 0.5, 1000);
+      }
+    } else {
+      // Mute: fade out current audio
+      setIsAudioMuted(true);
+      if (audioRef.current) {
+        await fadeOutAudio(audioRef.current, 1000);
+      }
+    }
+  };
+  
+  // Handle pause/resume audio
+  useEffect(() => {
+    if (audioRef.current && gameMode === 'focus' && screen === 'game') {
+      if (isPaused) {
+        audioRef.current.pause();
+      } else if (!isAudioMuted) {
+        audioRef.current.play().catch(err => console.log('[AUDIO] Play prevented:', err));
+      }
+    }
+  }, [isPaused, gameMode, screen]);
+  
+  // Legacy background function (kept for non-Focus modes)
   const getGameBackground = () => {
     const points = totalPoints + sessionScore;
     
@@ -996,6 +1175,12 @@ const ZikrGame = () => {
       setNewlyUnlockedPhrases({});
       setNewlyUnlockedAsmaNames({}); // Reset newly unlocked Asma names
       setTotalPhrasesAppeared(0);
+      
+      // Reset background/audio for Focus Mode
+      if (mode === 'focus') {
+        setCurrentBackgroundIndex(1);
+        isFadingRef.current = false;
+      }
       
       // Reset game start time using ref for consistent speed
       const startTime = Date.now();
@@ -1919,13 +2104,28 @@ const ZikrGame = () => {
     const currentMode = modeInfo[gameMode] || modeInfo.focus;
     const ModeIcon = currentMode.icon;
     
-    // Get dynamic background for Focus Mode, static for others
+    // Get background styling
     const backgroundClass = gameMode === 'focus' 
-      ? getGameBackground() 
+      ? '' // Focus Mode uses image backgrounds
       : 'bg-gradient-to-br from-emerald-100 via-teal-100 to-cyan-100';
     
     return (
-      <div className={`min-h-screen ${backgroundClass} relative overflow-hidden transition-colors duration-1000`}>
+      <div className={`min-h-screen ${backgroundClass} relative overflow-hidden`}>
+        {/* Dynamic Background Image for Focus Mode */}
+        {gameMode === 'focus' && (
+          <>
+            <div 
+              className="absolute inset-0 bg-cover bg-center transition-opacity duration-2000"
+              style={{
+                backgroundImage: `url(/assets/backgrounds/${currentBackgroundIndex}.jpg)`,
+                opacity: 1
+              }}
+            />
+            {/* Overlay for better text readability */}
+            <div className="absolute inset-0 bg-black/10" />
+          </>
+        )}
+        
         {/* Top bar */}
         <div className="absolute top-0 left-0 right-0 bg-white/90 backdrop-blur-sm shadow-lg p-4 z-10">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -1943,6 +2143,23 @@ const ZikrGame = () => {
                     <div className="text-lg font-bold text-purple-600">{totalPoints}</div>
                     <div className="text-gray-600 text-sm">total</div>
                   </div>
+                  <div className="h-8 w-px bg-gray-300"></div>
+                  {/* Audio Control for Focus Mode */}
+                  <button
+                    onClick={toggleAudioMute}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    title={isAudioMuted ? "Unmute Audio" : "Mute Audio"}
+                  >
+                    {isAudioMuted ? (
+                      <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM12.293 7.293a1 1 0 011.414 0L15 8.586l1.293-1.293a1 1 0 111.414 1.414L16.414 10l1.293 1.293a1 1 0 01-1.414 1.414L15 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L13.586 10l-1.293-1.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
                 </>
               )}
               
@@ -2183,8 +2400,8 @@ const ZikrGame = () => {
 
   // Stats screen
   if (screen === 'stats') {
-    // Calculate final total points (for Focus Mode)
-    const finalTotalPoints = gameMode === 'focus' ? totalPoints + sessionScore : totalPoints;
+    // Total points already includes session score from endGame()
+    const finalTotalPoints = totalPoints;
     
     // Determine congratulatory message based on performance
     let congratsMessage = "Well done!";
