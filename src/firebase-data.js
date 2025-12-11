@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { db } from './firebase-config';
 
 // Get user data
@@ -30,29 +30,66 @@ export const saveGameProgress = async (userId, progressData) => {
   }
 };
 
-// Get leaderboard
-export const getLeaderboard = async (limitCount = 10) => {
+// Get leaderboard with top 10 + user context
+export const getLeaderboard = async (currentUserId = null) => {
   try {
+    // Query to get all users, sorted by points
     const leaderboardQuery = query(
       collection(db, 'users'),
-      orderBy('totalPoints', 'desc'),
-      limit(limitCount)
+      orderBy('totalPoints', 'desc')
     );
     
     const querySnapshot = await getDocs(leaderboardQuery);
-    const leaderboard = [];
+    const allUsers = [];
     
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      leaderboard.push({
+      allUsers.push({
         userId: doc.id,
         username: data.username,
-        totalPoints: data.totalPoints,
-        achievements: data.achievements?.length || 0
+        totalPoints: data.totalPoints || 0,
+        achievements: data.achievements?.length || 0,
+        currentStreak: data.currentStreak || 0
       });
     });
     
-    return { success: true, leaderboard };
+    // Find current user's position
+    let userPosition = -1;
+    if (currentUserId) {
+      userPosition = allUsers.findIndex(user => user.userId === currentUserId);
+    }
+    
+    // Build leaderboard: Top 10 + user context
+    let leaderboard = [];
+    let userContext = [];
+    
+    // Always include top 10
+    const top10 = allUsers.slice(0, 10);
+    leaderboard = top10.map((user, index) => ({
+      ...user,
+      rank: index + 1,
+      isCurrentUser: user.userId === currentUserId
+    }));
+    
+    // If user is not in top 10, add user context (2 above, user, 2 below)
+    if (userPosition >= 10) {
+      const startIndex = Math.max(10, userPosition - 2); // Don't overlap with top 10
+      const endIndex = Math.min(allUsers.length, userPosition + 3); // User + 2 below
+      
+      userContext = allUsers.slice(startIndex, endIndex).map((user, index) => ({
+        ...user,
+        rank: startIndex + index + 1,
+        isCurrentUser: user.userId === currentUserId
+      }));
+    }
+    
+    return { 
+      success: true, 
+      leaderboard,
+      userContext,
+      userRank: userPosition >= 0 ? userPosition + 1 : null,
+      totalUsers: allUsers.length
+    };
   } catch (error) {
     console.error('Get leaderboard error:', error);
     return { success: false, error: error.message };
