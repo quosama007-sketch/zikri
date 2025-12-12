@@ -2141,25 +2141,6 @@ const ZikrGame = () => {
               </div>
             </div>
           </div>
-
-          {/* Stats Preview */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-[#f8fafc] rounded-2xl shadow-lg p-6 text-center border border-[#cbd5e1]">
-              <Award className="text-[#4f46e5] mx-auto mb-2" size={32} />
-              <p className="text-[#94a3b8] text-sm">Unlocked</p>
-              <p className="text-2xl font-bold text-[#0f172a]">{getUnlockedPhraseIds(totalPoints).length}/20</p>
-            </div>
-            <div className="bg-[#f8fafc] rounded-2xl shadow-lg p-6 text-center border border-[#cbd5e1]">
-              <Trophy className="text-[#f59e0b] mx-auto mb-2" size={32} />
-              <p className="text-[#94a3b8] text-sm">Achievements</p>
-              <p className="text-2xl font-bold text-[#0f172a]">{currentUser?.achievements?.length || 0}/{ACHIEVEMENTS.length}</p>
-            </div>
-            <div className="bg-[#f8fafc] rounded-2xl shadow-lg p-6 text-center border border-[#cbd5e1]">
-              <Clock className="text-[#a855f7] mx-auto mb-2" size={32} />
-              <p className="text-[#94a3b8] text-sm">Zikr Time</p>
-              <p className="text-2xl font-bold text-[#0f172a]">{Math.floor((currentUser?.totalZikrTime || 0) / 60)}m</p>
-            </div>
-          </div>
         </div>
       </div>
     );
