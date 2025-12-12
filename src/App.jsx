@@ -2083,7 +2083,11 @@ const ZikrGame = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-[#0f172a]">As-salamu alaykum, {currentUser?.username}!</h2>
-                <p className="text-[#64748b] mt-1">Total Points: <span className="font-bold text-[#4f46e5]">{totalPoints}</span></p>
+                <div className="flex items-center gap-4 mt-1">
+                  <p className="text-[#64748b]">Total Points: <span className="font-bold text-[#4f46e5]">{totalPoints}</span></p>
+                  <span className="text-[#cbd5e1]">|</span>
+                  <p className="text-[#64748b]">Zikr Time: <span className="font-bold text-[#a855f7]">{Math.floor((currentUser?.totalZikrTime || 0) / 60)}m</span></p>
+                </div>
                 {currentUser?.currentStreak > 0 && (
                   <div className="flex items-center gap-2 mt-2">
                     <Flame className="text-[#10b981]" size={20} />
@@ -2118,28 +2122,21 @@ const ZikrGame = () => {
                 Start Game
               </button>
               
-              {/* Grid of 3 buttons: Leaderboard, Achievements, Zikr Phrases */}
-              <div className="grid grid-cols-3 gap-3">
+              {/* Grid of 2 buttons: Leaderboard, Achievements */}
+              <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setScreen('leaderboard')}
-                  className="bg-gradient-to-br from-[#fb923c] to-[#f59e0b] text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
+                  className="bg-gradient-to-br from-[#fb923c] to-[#f59e0b] text-white py-4 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
                 >
-                  <Crown size={24} />
-                  <span className="text-sm">Leaderboard</span>
+                  <Crown size={28} />
+                  <span className="text-base">Leaderboard</span>
                 </button>
                 <button
                   onClick={() => setScreen('achievements')}
-                  className="bg-gradient-to-br from-[#a855f7] to-[#7c3aed] text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
+                  className="bg-gradient-to-br from-[#a855f7] to-[#7c3aed] text-white py-4 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
                 >
-                  <Medal size={24} />
-                  <span className="text-sm">Achievements</span>
-                </button>
-                <button
-                  onClick={() => setScreen('profile')}
-                  className="bg-gradient-to-br from-[#3b82f6] to-[#2563eb] text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
-                >
-                  <Sparkles size={24} />
-                  <span className="text-sm">Zikr Phrases</span>
+                  <Medal size={28} />
+                  <span className="text-base">Achievements</span>
                 </button>
               </div>
             </div>
@@ -2864,23 +2861,26 @@ const ZikrGame = () => {
   // Achievements screen
   if (screen === 'achievements') {
     const userAchievements = currentUser?.achievements || [];
+    const unlockedIds = getUnlockedPhraseIds(totalPoints);
+    const unlockedPhrases = ZIKR_PHRASES.filter(p => unlockedIds.includes(p.id));
+    const lockedPhrases = ZIKR_PHRASES.filter(p => !unlockedIds.includes(p.id));
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#e0e7ff] to-[#ffffff] p-4">
         <div className="max-w-2xl mx-auto">
           {/* Header */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6">
+          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Medal className="text-purple-500" size={32} />
+                <Medal className="text-[#a855f7]" size={32} />
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-800">Achievements</h2>
-                  <p className="text-sm text-gray-600">{userAchievements.length}/{ACHIEVEMENTS.length} Unlocked</p>
+                  <h2 className="text-2xl font-bold text-[#0f172a]">Achievements & Phrases</h2>
+                  <p className="text-sm text-[#64748b]">{userAchievements.length}/{ACHIEVEMENTS.length} Achievements • {unlockedPhrases.length}/20 Phrases</p>
                 </div>
               </div>
               <button
                 onClick={() => setScreen('menu')}
-                className="text-emerald-600 font-semibold hover:underline"
+                className="text-[#4f46e5] font-semibold hover:underline"
               >
                 Back
               </button>
@@ -2888,68 +2888,129 @@ const ZikrGame = () => {
           </div>
 
           {/* Achievements Grid */}
-          <div className="grid grid-cols-1 gap-4">
-            {ACHIEVEMENTS.map(achievement => {
-              const isUnlocked = userAchievements.includes(achievement.id);
-              let progress = 0;
+          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
+            <h3 className="text-xl font-bold text-[#0f172a] mb-4 flex items-center gap-2">
+              <Medal className="text-[#a855f7]" size={24} />
+              Your Achievements
+            </h3>
+            <div className="grid grid-cols-1 gap-4">
+              {ACHIEVEMENTS.map(achievement => {
+                const isUnlocked = userAchievements.includes(achievement.id);
+                let progress = 0;
 
-              // Calculate progress
-              switch (achievement.requirement.type) {
-                case 'sessions':
-                  progress = Math.min(100, ((currentUser?.sessionsCompleted || 0) / achievement.requirement.count) * 100);
-                  break;
-                case 'points':
-                  progress = Math.min(100, (totalPoints / achievement.requirement.count) * 100);
-                  break;
-                case 'streak':
-                  progress = Math.min(100, ((currentUser?.currentStreak || 0) / achievement.requirement.count) * 100);
-                  break;
-                case 'time':
-                  progress = Math.min(100, ((currentUser?.totalZikrTime || 0) / achievement.requirement.count) * 100);
-                  break;
-                case 'unlocked':
-                  progress = Math.min(100, (getUnlockedPhraseIds(totalPoints).length / achievement.requirement.count) * 100);
-                  break;
-              }
+                // Calculate progress
+                switch (achievement.requirement.type) {
+                  case 'sessions':
+                    progress = Math.min(100, ((currentUser?.sessionsCompleted || 0) / achievement.requirement.count) * 100);
+                    break;
+                  case 'points':
+                    progress = Math.min(100, (totalPoints / achievement.requirement.count) * 100);
+                    break;
+                  case 'streak':
+                    progress = Math.min(100, ((currentUser?.currentStreak || 0) / achievement.requirement.count) * 100);
+                    break;
+                  case 'time':
+                    progress = Math.min(100, ((currentUser?.totalZikrTime || 0) / achievement.requirement.count) * 100);
+                    break;
+                  case 'unlocked':
+                    progress = Math.min(100, (getUnlockedPhraseIds(totalPoints).length / achievement.requirement.count) * 100);
+                    break;
+                }
 
-              return (
-                <div
-                  key={achievement.id}
-                  className={`bg-white rounded-2xl shadow-lg p-6 border-2 ${
-                    isUnlocked ? 'border-purple-300' : 'border-gray-200 opacity-60'
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`text-5xl ${
-                        isUnlocked ? 'grayscale-0' : 'grayscale opacity-50'
-                      }`}
-                    >
-                      {achievement.icon}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-gray-800">{achievement.name}</h3>
-                      <p className="text-sm text-gray-600 mb-2">{achievement.description}</p>
-                      {!isUnlocked && (
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${progress}%` }}
-                          ></div>
-                        </div>
-                      )}
-                      {isUnlocked && (
-                        <div className="flex items-center gap-2 text-purple-600 font-semibold">
-                          <Star className="fill-purple-600" size={16} />
-                          <span>Unlocked!</span>
-                        </div>
-                      )}
+                return (
+                  <div
+                    key={achievement.id}
+                    className={`bg-gradient-to-r rounded-2xl shadow-lg p-6 border-2 ${
+                      isUnlocked 
+                        ? 'from-[#e0e7ff] to-[#f8fafc] border-[#a855f7]' 
+                        : 'from-[#f8fafc] to-[#ffffff] border-[#cbd5e1] opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`text-5xl ${
+                          isUnlocked ? 'grayscale-0' : 'grayscale opacity-50'
+                        }`}
+                      >
+                        {achievement.icon}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-[#0f172a]">{achievement.name}</h3>
+                        <p className="text-sm text-[#64748b] mb-2">{achievement.description}</p>
+                        {!isUnlocked && (
+                          <div className="w-full bg-[#cbd5e1] rounded-full h-2">
+                            <div
+                              className="bg-gradient-to-r from-[#a855f7] to-[#7c3aed] h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${progress}%` }}
+                            ></div>
+                          </div>
+                        )}
+                        {isUnlocked && (
+                          <div className="flex items-center gap-2 text-[#a855f7] font-semibold">
+                            <Star className="fill-[#a855f7]" size={16} />
+                            <span>Unlocked!</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
+
+          {/* Unlocked Phrases */}
+          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
+            <h3 className="text-xl font-bold text-[#0f172a] mb-4 flex items-center gap-2">
+              <Unlock className="text-[#10b981]" size={24} />
+              Unlocked Phrases ({unlockedPhrases.length})
+            </h3>
+            <div className="space-y-3">
+              {unlockedPhrases.map(phrase => (
+                <div key={phrase.id} className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] rounded-xl p-4 border-2 border-[#4f46e5]">
+                  <p className="text-2xl font-bold text-[#0f172a] mb-2" style={{ fontFamily: 'Arial' }}>
+                    {phrase.arabic}
+                  </p>
+                  <p className="text-sm font-semibold text-[#4f46e5] mb-1">{phrase.transliteration}</p>
+                  <p className="text-sm text-[#64748b] mb-2">{phrase.translation}</p>
+                  <p className="text-xs text-[#94a3b8] italic">{phrase.category}</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="bg-[#4f46e5] text-white text-xs px-2 py-1 rounded-full font-semibold">
+                      +{phrase.points} pts
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Locked Phrases */}
+          {lockedPhrases.length > 0 && (
+            <div className="bg-white rounded-3xl shadow-lg p-6 border border-[#cbd5e1]">
+              <h3 className="text-xl font-bold text-[#0f172a] mb-4 flex items-center gap-2">
+                <Lock className="text-[#94a3b8]" size={24} />
+                Locked Phrases ({lockedPhrases.length})
+              </h3>
+              <div className="space-y-3">
+                {lockedPhrases.map(phrase => (
+                  <div key={phrase.id} className="bg-gradient-to-r from-[#f8fafc] to-[#ffffff] rounded-xl p-4 border-2 border-[#cbd5e1]">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Lock className="text-[#94a3b8]" size={24} />
+                        <div>
+                          <p className="text-lg font-bold text-[#94a3b8]">Hidden Phrase #{phrase.id}</p>
+                          <p className="text-xs text-[#94a3b8]">{phrase.category.split(' - ')[0]}</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold text-[#4f46e5] bg-[#e0e7ff] px-3 py-1 rounded-full">
+                        {phrase.unlockAt} pts
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
