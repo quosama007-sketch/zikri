@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, Heart, Pause, Play, Lock, Unlock, LogOut, User, Award, TrendingUp, Sparkles, Star, Flame, Clock, Target, Zap, Crown, Medal, Users } from 'lucide-react';
+import { Trophy, Heart, Pause, Play, Lock, Unlock, LogOut, User, Award, TrendingUp, Sparkles, Star, Flame, Clock, Target, Zap, Crown, Medal, Users, Circle } from 'lucide-react';
 
 // Firebase imports
 import { onAuthStateChanged } from 'firebase/auth';
@@ -1720,7 +1720,11 @@ const ZikrGame = () => {
   const endGame = () => {
     stopGameLoop();
     const duration = gameStartTimeRef.current ? Math.floor((Date.now() - gameStartTimeRef.current) / 1000) : 0;
-    const newTotalPoints = totalPoints + sessionScore;
+    
+    // CRITICAL: Use sessionScoreRef.current for accurate real-time value
+    // This ensures we get the correct score even when called from setTimeout in game loop
+    const finalSessionScore = sessionScoreRef.current;
+    const newTotalPoints = totalPoints + finalSessionScore;
     setTotalPoints(newTotalPoints);
     
     const accuracy = sessionStats.totalTaps > 0 
@@ -1729,13 +1733,13 @@ const ZikrGame = () => {
     
     console.log('[END GAME] Saving progress with:');
     console.log('  - Total Points:', newTotalPoints);
+    console.log('  - Session Score (from ref):', finalSessionScore);
     console.log('  - Duration:', duration);
     console.log('  - Accuracy:', accuracy);
-    console.log('  - Session Score:', sessionScore);
     console.log('  - Current User:', currentUser?.username);
     
     // Save with duration, accuracy, and session score for achievements
-    const newAchievementEarned = saveProgress(newTotalPoints, duration, accuracy, sessionScore);
+    const newAchievementEarned = saveProgress(newTotalPoints, duration, accuracy, finalSessionScore);
     
     console.log('[END GAME] New achievement earned:', newAchievementEarned);
     
@@ -1994,7 +1998,7 @@ const ZikrGame = () => {
                     ? 'from-blue-500 to-indigo-600'
                     : 'from-gray-400 to-gray-500'
                 }`}>
-                  <Target size={48} />
+                  <Circle size={48} />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">Tasbih Mode</h2>
                 <p className="text-gray-600 mb-4">Focused repetition - Master one phrase</p>
@@ -2138,14 +2142,14 @@ const ZikrGame = () => {
     const modeInfo = {
       focus: { name: 'Focus Mode', color: 'emerald', icon: Target },
       asma: { name: 'Asma ul Husna', color: 'purple', icon: Star },
-      tasbih: { name: 'Tasbih Mode', color: 'blue', icon: Target }
+      tasbih: { name: 'Tasbih Mode', color: 'blue', icon: Circle }
     };
     const currentMode = modeInfo[gameMode] || modeInfo.focus;
     const ModeIcon = currentMode.icon;
     
     // Get background styling
-    const backgroundClass = gameMode === 'focus' 
-      ? '' // Focus Mode uses image backgrounds
+    const backgroundClass = (gameMode === 'focus' || gameMode === 'tasbih')
+      ? '' // Focus and Tasbih modes use image backgrounds
       : 'bg-gradient-to-br from-emerald-100 via-teal-100 to-cyan-100';
     
     return (
@@ -2158,6 +2162,20 @@ const ZikrGame = () => {
               style={{
                 backgroundImage: `url(/assets/backgrounds/${currentBackgroundIndex}.jpg)`,
                 opacity: 1
+              }}
+            />
+            {/* Overlay for better text readability */}
+            <div className="absolute inset-0 bg-black/10" />
+          </>
+        )}
+        
+        {/* Static Background Image for Tasbih Mode */}
+        {gameMode === 'tasbih' && (
+          <>
+            <div 
+              className="absolute inset-0 bg-cover bg-center"
+              style={{
+                backgroundImage: `url(/assets/background/101.jpg)`,
               }}
             />
             {/* Overlay for better text readability */}
@@ -2204,6 +2222,30 @@ const ZikrGame = () => {
               
               {gameMode === 'asma' && (
                 <>
+                  {/* Next Unlocking Name Preview */}
+                  {(() => {
+                    const currentUnlocked = getUnlockedAsmaIds(asmaTotalTaps).length;
+                    const nextUnlockAt = (currentUnlocked + 1) * 33;
+                    const tapsRemaining = nextUnlockAt - asmaTotalTaps;
+                    const nextName = currentUnlocked < 99 ? NAMES_OF_ALLAH[currentUnlocked] : null;
+                    
+                    return nextName && tapsRemaining > 0 ? (
+                      <div className="flex items-center gap-2 bg-purple-50 px-3 py-2 rounded-xl border border-purple-200">
+                        <div className="text-xs text-purple-600 font-semibold">Next:</div>
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-purple-900">{nextName.arabic}</div>
+                          <div className="text-xs text-purple-600">{nextName.transliteration}</div>
+                        </div>
+                        <div className="ml-2 text-xs text-purple-500 font-medium">
+                          {tapsRemaining} {tapsRemaining === 1 ? 'tap' : 'taps'}
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+                  {(() => {
+                    const nextName = getUnlockedAsmaIds(asmaTotalTaps).length < 99 ? NAMES_OF_ALLAH[getUnlockedAsmaIds(asmaTotalTaps).length] : null;
+                    return nextName ? <div className="h-8 w-px bg-gray-300"></div> : null;
+                  })()}
                   <div className="flex items-center gap-2">
                     <div className="text-2xl font-bold text-purple-600">{asmaTotalTaps}</div>
                     <div className="text-gray-600 text-sm">total taps</div>
