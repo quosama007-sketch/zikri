@@ -2076,90 +2076,91 @@ const ZikrGame = () => {
   // Menu screen
   if (screen === 'menu') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#e0e7ff] to-[#ffffff] p-4">
         <div className="max-w-2xl mx-auto">
           {/* Header */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6">
+          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">As-salamu alaykum, {currentUser?.username}!</h2>
-                <p className="text-gray-600 mt-1">Total Points: <span className="font-bold text-emerald-600">{totalPoints}</span></p>
+                <h2 className="text-2xl font-bold text-[#0f172a]">As-salamu alaykum, {currentUser?.username}!</h2>
+                <p className="text-[#64748b] mt-1">Total Points: <span className="font-bold text-[#4f46e5]">{totalPoints}</span></p>
                 {currentUser?.currentStreak > 0 && (
                   <div className="flex items-center gap-2 mt-2">
-                    <Flame className="text-orange-500" size={20} />
-                    <span className="text-sm font-semibold text-orange-600">{currentUser.currentStreak} Day Streak!</span>
+                    <Flame className="text-[#10b981]" size={20} />
+                    <span className="text-sm font-semibold text-[#10b981]">{currentUser.currentStreak} Day Streak!</span>
                   </div>
                 )}
               </div>
-              <button onClick={handleLogout} className="p-3 hover:bg-gray-100 rounded-full transition-colors">
-                <LogOut className="text-gray-600" size={24} />
+              <button onClick={handleLogout} className="p-3 hover:bg-[#f8fafc] rounded-full transition-colors">
+                <LogOut className="text-[#64748b]" size={24} />
               </button>
             </div>
           </div>
 
           {/* Main Menu */}
-          <div className="bg-white rounded-3xl shadow-lg p-8 mb-6">
+          <div className="bg-white rounded-3xl shadow-lg p-8 mb-6 border border-[#cbd5e1]">
             <div className="text-center mb-8">
-              <div className="inline-block bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-full p-6 mb-4">
+              <div className="inline-block bg-gradient-to-r from-[#1e3a8a] to-[#4f46e5] text-white rounded-full p-6 mb-4">
                 <Trophy size={48} />
               </div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-2">
-                Zikr Game
+              <h1 className="text-4xl font-bold text-[#1e3a8a] mb-2">
+                Zikri
               </h1>
-              <p className="text-gray-600">Remember Allah, Earn Rewards</p>
+              <p className="text-[#64748b]">Remember Allah, Earn Rewards</p>
             </div>
 
             <div className="space-y-4">
+              {/* Start Game Button */}
               <button
                 onClick={() => setScreen('mode-select')}
-                className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-4 rounded-xl font-semibold text-lg hover:shadow-lg transform hover:scale-105 transition-all"
+                className="w-full bg-gradient-to-r from-[#1e3a8a] to-[#4f46e5] text-white py-4 rounded-xl font-semibold text-lg hover:shadow-lg transform hover:scale-105 transition-all"
               >
                 Start Game
               </button>
               
-              <div className="grid grid-cols-2 gap-4">
+              {/* Grid of 3 buttons: Leaderboard, Achievements, Zikr Phrases */}
+              <div className="grid grid-cols-3 gap-3">
                 <button
                   onClick={() => setScreen('leaderboard')}
-                  className="bg-gradient-to-r from-yellow-500 to-orange-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex items-center justify-center gap-2"
+                  className="bg-gradient-to-br from-[#fb923c] to-[#f59e0b] text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
                 >
-                  <Crown size={20} />
-                  Leaderboard
+                  <Crown size={24} />
+                  <span className="text-sm">Leaderboard</span>
                 </button>
                 <button
                   onClick={() => setScreen('achievements')}
-                  className="bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex items-center justify-center gap-2"
+                  className="bg-gradient-to-br from-[#a855f7] to-[#7c3aed] text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
                 >
-                  <Medal size={20} />
-                  Achievements
+                  <Medal size={24} />
+                  <span className="text-sm">Achievements</span>
+                </button>
+                <button
+                  onClick={() => setScreen('profile')}
+                  className="bg-gradient-to-br from-[#3b82f6] to-[#2563eb] text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
+                >
+                  <Sparkles size={24} />
+                  <span className="text-sm">Zikr Phrases</span>
                 </button>
               </div>
-              
-              <button
-                onClick={() => setScreen('profile')}
-                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white py-4 rounded-xl font-semibold text-lg hover:shadow-lg transform hover:scale-105 transition-all flex items-center justify-center gap-2"
-              >
-                <User size={20} />
-                My Progress
-              </button>
             </div>
           </div>
 
           {/* Stats Preview */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
-              <Award className="text-emerald-500 mx-auto mb-2" size={32} />
-              <p className="text-gray-600 text-sm">Unlocked</p>
-              <p className="text-2xl font-bold text-gray-800">{getUnlockedPhraseIds(totalPoints).length}/20</p>
+            <div className="bg-[#f8fafc] rounded-2xl shadow-lg p-6 text-center border border-[#cbd5e1]">
+              <Award className="text-[#4f46e5] mx-auto mb-2" size={32} />
+              <p className="text-[#94a3b8] text-sm">Unlocked</p>
+              <p className="text-2xl font-bold text-[#0f172a]">{getUnlockedPhraseIds(totalPoints).length}/20</p>
             </div>
-            <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
-              <Trophy className="text-yellow-500 mx-auto mb-2" size={32} />
-              <p className="text-gray-600 text-sm">Achievements</p>
-              <p className="text-2xl font-bold text-gray-800">{currentUser?.achievements?.length || 0}/{ACHIEVEMENTS.length}</p>
+            <div className="bg-[#f8fafc] rounded-2xl shadow-lg p-6 text-center border border-[#cbd5e1]">
+              <Trophy className="text-[#f59e0b] mx-auto mb-2" size={32} />
+              <p className="text-[#94a3b8] text-sm">Achievements</p>
+              <p className="text-2xl font-bold text-[#0f172a]">{currentUser?.achievements?.length || 0}/{ACHIEVEMENTS.length}</p>
             </div>
-            <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
-              <Clock className="text-purple-500 mx-auto mb-2" size={32} />
-              <p className="text-gray-600 text-sm">Zikr Time</p>
-              <p className="text-2xl font-bold text-gray-800">{Math.floor((currentUser?.totalZikrTime || 0) / 60)}m</p>
+            <div className="bg-[#f8fafc] rounded-2xl shadow-lg p-6 text-center border border-[#cbd5e1]">
+              <Clock className="text-[#a855f7] mx-auto mb-2" size={32} />
+              <p className="text-[#94a3b8] text-sm">Zikr Time</p>
+              <p className="text-2xl font-bold text-[#0f172a]">{Math.floor((currentUser?.totalZikrTime || 0) / 60)}m</p>
             </div>
           </div>
         </div>
@@ -2633,48 +2634,48 @@ const ZikrGame = () => {
     const lockedPhrases = ZIKR_PHRASES.filter(p => !unlockedIds.includes(p.id));
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#e0e7ff] to-[#ffffff] p-4">
         <div className="max-w-2xl mx-auto">
           {/* Header */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6">
+          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-800">My Progress</h2>
+              <h2 className="text-2xl font-bold text-[#0f172a]">Zikr Phrases</h2>
               <button
                 onClick={() => setScreen('menu')}
-                className="text-emerald-600 font-semibold hover:underline"
+                className="text-[#4f46e5] font-semibold hover:underline"
               >
                 Back
               </button>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-4">
-                <p className="text-gray-600 text-sm mb-1">Total Points</p>
-                <p className="text-4xl font-bold text-emerald-600">{totalPoints}</p>
+              <div className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] rounded-2xl p-4 border border-[#cbd5e1]">
+                <p className="text-[#64748b] text-sm mb-1">Total Points</p>
+                <p className="text-4xl font-bold text-[#4f46e5]">{totalPoints}</p>
               </div>
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4">
-                <p className="text-gray-600 text-sm mb-1">Total Zikr Time</p>
-                <p className="text-4xl font-bold text-purple-600">{Math.floor((currentUser?.totalZikrTime || 0) / 60)}m</p>
+              <div className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] rounded-2xl p-4 border border-[#cbd5e1]">
+                <p className="text-[#64748b] text-sm mb-1">Total Zikr Time</p>
+                <p className="text-4xl font-bold text-[#a855f7]">{Math.floor((currentUser?.totalZikrTime || 0) / 60)}m</p>
               </div>
             </div>
           </div>
 
           {/* Unlocked Phrases */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <Unlock className="text-emerald-500" size={24} />
+          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
+            <h3 className="text-xl font-bold text-[#0f172a] mb-4 flex items-center gap-2">
+              <Unlock className="text-[#10b981]" size={24} />
               Unlocked Phrases ({unlockedPhrases.length})
             </h3>
             <div className="space-y-3">
               {unlockedPhrases.map(phrase => (
-                <div key={phrase.id} className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-4 border-2 border-emerald-200">
-                  <p className="text-2xl font-bold text-gray-800 mb-2" style={{ fontFamily: 'Arial' }}>
+                <div key={phrase.id} className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] rounded-xl p-4 border-2 border-[#4f46e5]">
+                  <p className="text-2xl font-bold text-[#0f172a] mb-2" style={{ fontFamily: 'Arial' }}>
                     {phrase.arabic}
                   </p>
-                  <p className="text-sm font-semibold text-emerald-700 mb-1">{phrase.transliteration}</p>
-                  <p className="text-sm text-gray-600 mb-2">{phrase.translation}</p>
-                  <p className="text-xs text-gray-500 italic">{phrase.category}</p>
+                  <p className="text-sm font-semibold text-[#4f46e5] mb-1">{phrase.transliteration}</p>
+                  <p className="text-sm text-[#64748b] mb-2">{phrase.translation}</p>
+                  <p className="text-xs text-[#94a3b8] italic">{phrase.category}</p>
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="bg-emerald-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                    <span className="bg-[#4f46e5] text-white text-xs px-2 py-1 rounded-full font-semibold">
                       +{phrase.points} pts
                     </span>
                   </div>
@@ -2685,23 +2686,23 @@ const ZikrGame = () => {
 
           {/* Locked Phrases */}
           {lockedPhrases.length > 0 && (
-            <div className="bg-white rounded-3xl shadow-lg p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <Lock className="text-gray-400" size={24} />
+            <div className="bg-white rounded-3xl shadow-lg p-6 border border-[#cbd5e1]">
+              <h3 className="text-xl font-bold text-[#0f172a] mb-4 flex items-center gap-2">
+                <Lock className="text-[#94a3b8]" size={24} />
                 Locked Phrases ({lockedPhrases.length})
               </h3>
               <div className="space-y-3">
                 {lockedPhrases.map(phrase => (
-                  <div key={phrase.id} className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 border-2 border-gray-300">
+                  <div key={phrase.id} className="bg-gradient-to-r from-[#f8fafc] to-[#ffffff] rounded-xl p-4 border-2 border-[#cbd5e1]">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <Lock className="text-gray-500" size={24} />
+                        <Lock className="text-[#94a3b8]" size={24} />
                         <div>
-                          <p className="text-lg font-bold text-gray-400">Hidden Phrase #{phrase.id}</p>
-                          <p className="text-xs text-gray-500">{phrase.category.split(' - ')[0]}</p>
+                          <p className="text-lg font-bold text-[#94a3b8]">Hidden Phrase #{phrase.id}</p>
+                          <p className="text-xs text-[#94a3b8]">{phrase.category.split(' - ')[0]}</p>
                         </div>
                       </div>
-                      <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
+                      <span className="text-sm font-bold text-[#4f46e5] bg-[#e0e7ff] px-3 py-1 rounded-full">
                         {phrase.unlockAt} pts
                       </span>
                     </div>
