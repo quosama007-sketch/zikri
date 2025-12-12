@@ -1548,11 +1548,15 @@ const ZikrGame = () => {
         const missed = updated.filter(p => p.position > 110);
         if (missed.length > 0) {
           // In Tasbih mode, misses don't end the game - only reaching target count ends it
-          if (gameMode !== 'tasbih') {
+          // CRITICAL: Use gameModeRef.current to avoid stale closure in setInterval
+          if (gameModeRef.current !== 'tasbih') {
             setConsecutiveMisses(prevMisses => {
               const newMisses = prevMisses + missed.length;
               
+              console.log(`[MISS CHECK] Consecutive misses: ${prevMisses} → ${newMisses}`);
+              
               if (newMisses >= 5) {
+                console.log(`[GAME END] 5 consecutive misses reached! Ending game...`);
                 setTimeout(() => endGame(), 100);
               }
               
@@ -1629,6 +1633,33 @@ const ZikrGame = () => {
               updated[id] = 0; // Start appearance count at 0
             });
             return updated;
+          });
+          
+          // IMMEDIATELY SPAWN the newly unlocked name(s)
+          newlyUnlockedIds.forEach(id => {
+            setTimeout(() => {
+              const newlyUnlockedName = NAMES_OF_ALLAH.find(name => name.id === id);
+              if (newlyUnlockedName) {
+                const newPhrase = {
+                  id: nextPhraseIdRef.current++,
+                  data: newlyUnlockedName,
+                  position: -20,
+                  verticalPosition: Math.random() * 60 + 20,
+                  isNewlyUnlocked: true,
+                  phraseDataId: newlyUnlockedName.id
+                };
+                setPhrases(prevPhrases => [...prevPhrases, newPhrase]);
+                setTotalPhrasesAppeared(prevTotal => prevTotal + 1);
+                
+                // Increment appearance counter
+                setNewlyUnlockedAsmaNames(prev2 => ({
+                  ...prev2,
+                  [id]: (prev2[id] || 0) + 1
+                }));
+                
+                console.log(`[ASMA SPAWN] Spawned newly unlocked name: ${newlyUnlockedName.transliteration}`);
+              }
+            }, 100);
           });
         }
         
@@ -2175,7 +2206,7 @@ const ZikrGame = () => {
             <div 
               className="absolute inset-0 bg-cover bg-center"
               style={{
-                backgroundImage: `url(/assets/background/101.jpg)`,
+                backgroundImage: `url(/assets/backgrounds/101.jpg)`,
               }}
             />
             {/* Overlay for better text readability */}
