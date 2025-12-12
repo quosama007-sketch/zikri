@@ -2179,8 +2179,8 @@ const ZikrGame = () => {
     const ModeIcon = currentMode.icon;
     
     // Get background styling
-    const backgroundClass = (gameMode === 'focus' || gameMode === 'tasbih')
-      ? '' // Focus and Tasbih modes use image backgrounds
+    const backgroundClass = (gameMode === 'focus' || gameMode === 'asma' || gameMode === 'tasbih')
+      ? '' // Focus, Asma, and Tasbih modes use image backgrounds
       : 'bg-gradient-to-br from-emerald-100 via-teal-100 to-cyan-100';
     
     return (
@@ -2207,6 +2207,20 @@ const ZikrGame = () => {
               className="absolute inset-0 bg-cover bg-center"
               style={{
                 backgroundImage: `url(/assets/backgrounds/101.jpg)`,
+              }}
+            />
+            {/* Overlay for better text readability */}
+            <div className="absolute inset-0 bg-black/10" />
+          </>
+        )}
+        
+        {/* Static Background Image for Asma ul Husna Mode */}
+        {gameMode === 'asma' && (
+          <>
+            <div 
+              className="absolute inset-0 bg-cover bg-center"
+              style={{
+                backgroundImage: `url(/assets/backgrounds/201.jpg)`,
               }}
             />
             {/* Overlay for better text readability */}
