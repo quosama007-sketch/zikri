@@ -1130,17 +1130,102 @@ const ZikrGame = () => {
   const getSpeed = () => {
     if (!gameStartTimeRef.current) return 0.3;
     
-    // Asma ul Husna Mode: Fixed speed at Level 5 (0.5)
+    // Asma ul Husna Mode: Fixed speed at Level 3 (0.3)
     if (gameModeRef.current === 'asma') {
-      return 0.5; // Fixed speed, no increase over time
+      return 0.3; // Fixed speed at 0.3 (slower, more contemplative)
     }
     
-    // Focus and Tasbih Modes: Gradual speed increase
+    // Focus and Tasbih Modes: Gradual speed increase, then frequency increase
     const elapsed = (Date.now() - gameStartTimeRef.current) / 1000; // seconds
-    const baseSpeed = 0.3; // Level 3 speed (30% of max speed 1.0)
-    const speedIncrease = Math.floor(elapsed / 40) * 0.05; // Very gradual increase every 40 seconds
-    const maxSpeed = 1.0; // Level 10 speed (100%)
+    const baseSpeed = 0.2; // Starting speed
+    const speedIncrease = Math.floor(elapsed / 40) * 0.05; // Gradual increase every 40 seconds
+    const maxSpeed = 0.4; // Cap speed at 0.4 (after this, increase frequency instead)
     return Math.min(baseSpeed + speedIncrease, maxSpeed);
+  };
+
+  // Create particle burst effect on unlock
+  const createParticleBurst = (x = window.innerWidth / 2, y = window.innerHeight / 2, color = '#f59e0b') => {
+    const particleCount = 20;
+    const container = document.body;
+    
+    for (let i = 0; i < particleCount; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+      particle.style.left = `${x}px`;
+      particle.style.top = `${y}px`;
+      particle.style.backgroundColor = color;
+      
+      // Random direction
+      const angle = (Math.PI * 2 * i) / particleCount;
+      const distance = 100 + Math.random() * 100;
+      const tx = Math.cos(angle) * distance;
+      const ty = Math.sin(angle) * distance;
+      
+      particle.style.setProperty('--tx', `${tx}px`);
+      particle.style.setProperty('--ty', `${ty}px`);
+      
+      container.appendChild(particle);
+      
+      // Remove after animation
+      setTimeout(() => particle.remove(), 1000);
+    }
+  };
+
+  // Create fireworks celebration effect
+  const createFireworks = () => {
+    const colors = ['#f59e0b', '#10b981', '#4f46e5', '#a855f7', '#fb923c'];
+    const fireworkCount = 5;
+    
+    for (let i = 0; i < fireworkCount; i++) {
+      setTimeout(() => {
+        const x = Math.random() * window.innerWidth * 0.6 + window.innerWidth * 0.2; // 20-80% of width
+        const y = Math.random() * window.innerHeight * 0.4 + window.innerHeight * 0.2; // 20-60% of height
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        
+        // Create burst center
+        const burst = document.createElement('div');
+        burst.className = 'firework firework-burst';
+        burst.style.left = `${x}px`;
+        burst.style.top = `${y}px`;
+        burst.style.backgroundColor = color;
+        document.body.appendChild(burst);
+        setTimeout(() => burst.remove(), 800);
+        
+        // Create particles
+        const particleCount = 12;
+        for (let j = 0; j < particleCount; j++) {
+          const particle = document.createElement('div');
+          particle.className = 'firework firework-particle';
+          particle.style.left = `${x}px`;
+          particle.style.top = `${y}px`;
+          particle.style.backgroundColor = color;
+          
+          const angle = (Math.PI * 2 * j) / particleCount;
+          const distance = 80 + Math.random() * 80;
+          const tx = Math.cos(angle) * distance;
+          const ty = Math.sin(angle) * distance;
+          
+          particle.style.setProperty('--tx', `${tx}px`);
+          particle.style.setProperty('--ty', `${ty}px`);
+          
+          document.body.appendChild(particle);
+          setTimeout(() => particle.remove(), 1200);
+        }
+      }, i * 300); // Stagger fireworks
+    }
+    
+    // Add screen flash
+    const flash = document.createElement('div');
+    flash.className = 'screen-flash';
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 600);
+    
+    // Add celebration text
+    const celebrationText = document.createElement('div');
+    celebrationText.className = 'celebration-text';
+    celebrationText.textContent = '🎉 Alhamdulillah! 🎉';
+    document.body.appendChild(celebrationText);
+    setTimeout(() => celebrationText.remove(), 2000);
   };
 
   // Start game
@@ -1478,6 +1563,9 @@ const ZikrGame = () => {
           console.log(`🎉 Unlocking ${currentMode === 'asma' ? 'name' : 'phrase'} ${item.id}: ${item.transliteration} at ${currentTotal} points!`);
           previouslyUnlockedRef.current.add(item.id);
           
+          // Trigger particle burst effect!
+          createParticleBurst(window.innerWidth / 2, window.innerHeight / 2, '#f59e0b');
+          
           // Mark as newly unlocked based on mode
           if (currentMode === 'focus') {
             // Focus Mode - mark in newlyUnlockedPhrases
@@ -1575,14 +1663,29 @@ const ZikrGame = () => {
         // Remove off-screen phrases
         const remaining = updated.filter(p => p.position <= 110);
 
-        // Maintain 2-3 phrases on screen at all times
-        if (remaining.length < 2) {
+        // Calculate spawn frequency multiplier (increases after speed caps at 0.4)
+        const currentSpeed = getSpeed();
+        const elapsed = (Date.now() - gameStartTimeRef.current) / 1000;
+        
+        // After speed reaches 0.4 (at ~80 seconds), start increasing frequency
+        let targetPhrases = 2; // Base: 2-3 phrases
+        let spawnProbability = 0.7; // Base probability
+        
+        if (currentSpeed >= 0.4 && (gameModeRef.current === 'focus' || gameModeRef.current === 'tasbih')) {
+          // Speed maxed out - now increase frequency!
+          const frequencyBoost = Math.floor((elapsed - 80) / 30); // Increase every 30s after speed caps
+          targetPhrases = Math.min(2 + frequencyBoost, 4); // Cap at 4 phrases max
+          spawnProbability = Math.min(0.7 + (frequencyBoost * 0.1), 0.95); // Cap at 95% probability
+        }
+
+        // Maintain target number of phrases on screen
+        if (remaining.length < targetPhrases) {
           spawnPhrase();
-          // Spawn one more if only 1 phrase
-          if (remaining.length < 1) {
+          // Spawn one more if significantly below target
+          if (remaining.length < targetPhrases - 1) {
             setTimeout(() => spawnPhrase(), 200);
           }
-        } else if (remaining.length < 3 && Math.random() < 0.7) {
+        } else if (remaining.length < targetPhrases + 1 && Math.random() < spawnProbability) {
           spawnPhrase();
         }
 
@@ -1625,6 +1728,9 @@ const ZikrGame = () => {
         if (newUnlockedCount > oldUnlockedCount) {
           const newlyUnlockedIds = getUnlockedAsmaIds(newTaps).slice(oldUnlockedCount);
           console.log(`[ASMA UNLOCK] New name(s) unlocked! IDs:`, newlyUnlockedIds);
+          
+          // Trigger particle burst effect!
+          createParticleBurst(window.innerWidth / 2, window.innerHeight / 2, '#a855f7');
           
           // Add to newly unlocked tracking
           setNewlyUnlockedAsmaNames(prevUnlocked => {
@@ -1715,6 +1821,10 @@ const ZikrGame = () => {
       if (newCount >= tasbihTargetCount) {
         // Goal achieved! End game
         console.log(`[TASBIH COMPLETE] Target reached! ${newCount}/${tasbihTargetCount}`);
+        
+        // Trigger fireworks celebration!
+        createFireworks();
+        
         setTimeout(() => endGame(), 500);
       }
     }
