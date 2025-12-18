@@ -140,3 +140,147 @@ body {
   z-index: 10001;
   animation: celebration-text 2s ease-out forwards;
 }
+
+/* Tap Effect Animations */
+
+/* Option A: Star Float (10 pts phrases) */
+@keyframes star-float {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(0.5);
+  }
+  20% {
+    transform: translate(-50%, -10px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -80px) scale(0.8);
+  }
+}
+
+.tap-star-float {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1000;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #f59e0b;
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+  animation: star-float 0.8s ease-out forwards;
+}
+
+/* Option C: Sparkle Burst (15-20 pts phrases) */
+@keyframes sparkle-burst {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(var(--tx), var(--ty)) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--tx), var(--ty)) scale(0.5);
+  }
+}
+
+@keyframes sparkle-float {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -100px) scale(1.2);
+  }
+}
+
+.tap-sparkle {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1000;
+  font-size: 1rem;
+  animation: sparkle-burst 0.8s ease-out forwards;
+}
+
+.tap-sparkle-text {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1001;
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #10b981;
+  text-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
+  animation: sparkle-float 1s ease-out forwards;
+}
+
+/* Option B: Transform to Star (25-30 pts phrases) */
+@keyframes phrase-shrink {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+@keyframes star-emerge {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.5);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -150%) scale(1);
+  }
+}
+
+@keyframes star-emerge-glow {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0) rotate(0deg);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.8) rotate(180deg);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.5) rotate(270deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -150%) scale(1.2) rotate(360deg);
+  }
+}
+
+.tap-transform-star {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1001;
+  font-size: 3rem;
+  animation: star-emerge 1.2s ease-out forwards;
+  filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.8));
+}
+
+.tap-transform-star-glow {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1001;
+  font-size: 3.5rem;
+  animation: star-emerge-glow 1.5s ease-out forwards;
+  filter: drop-shadow(0 0 30px rgba(245, 158, 11, 1)) drop-shadow(0 0 60px rgba(245, 158, 11, 0.6));
+}
