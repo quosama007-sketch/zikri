@@ -180,6 +180,18 @@ const ACHIEVEMENTS = [
     requirement: { type: 'streak', count: 365 } 
   },
 
+  // Special Milestone: Complete Collection
+  { 
+    id: 'dhikr-master', 
+    name: 'Sayyid al-Dhakirin', 
+    nameEn: 'Master of Remembrance',
+    description: 'Unlocked all 21 Zikr phrases', 
+    icon: '👑✨', 
+    category: 'milestone',
+    rarity: 'legendary',
+    requirement: { type: 'unlocked', count: 21 } 
+  },
+
   // Category 2: The Path to Mastery - Subhanallah (Example - others can be added)
   { 
     id: 'glorifier-1', 
@@ -3766,7 +3778,7 @@ const ZikrGame = () => {
                 <Medal className="text-[#a855f7]" size={32} />
                 <div>
                   <h2 className="text-2xl font-bold text-[#0f172a]">Achievements & Phrases</h2>
-                  <p className="text-sm text-[#64748b]">{userAchievements.length}/{ACHIEVEMENTS.length} Achievements • {unlockedPhrases.length}/20 Phrases</p>
+                  <p className="text-sm text-[#64748b]">{userAchievements.length}/{ACHIEVEMENTS.length} Achievements • {unlockedPhrases.length}/{ZIKR_PHRASES.length} Phrases</p>
                 </div>
               </div>
               <button
