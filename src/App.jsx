@@ -1320,6 +1320,100 @@ const ZikrGame = () => {
     setTimeout(() => celebrationText.remove(), 2000);
   };
 
+  // ===== TAP EFFECT ANIMATIONS =====
+  
+  // Option A: Star Float (10 pts phrases)
+  const createStarFloat = (x, y, points) => {
+    const starElement = document.createElement('div');
+    starElement.className = 'tap-star-float';
+    starElement.textContent = `⭐ +${points}`;
+    starElement.style.left = `${x}px`;
+    starElement.style.top = `${y}px`;
+    
+    document.body.appendChild(starElement);
+    setTimeout(() => starElement.remove(), 800);
+  };
+  
+  // Option C: Sparkle Burst (15-20 pts phrases)
+  const createSparkleBurst = (x, y, points) => {
+    const sparkleCount = 8;
+    
+    // Create sparkles bursting outward
+    for (let i = 0; i < sparkleCount; i++) {
+      const sparkle = document.createElement('div');
+      sparkle.className = 'tap-sparkle';
+      sparkle.textContent = '✨';
+      sparkle.style.left = `${x}px`;
+      sparkle.style.top = `${y}px`;
+      
+      // Random direction for burst
+      const angle = (Math.PI * 2 * i) / sparkleCount;
+      const distance = 40 + Math.random() * 40;
+      const tx = Math.cos(angle) * distance;
+      const ty = Math.sin(angle) * distance;
+      
+      sparkle.style.setProperty('--tx', `${tx}px`);
+      sparkle.style.setProperty('--ty', `${ty}px`);
+      
+      document.body.appendChild(sparkle);
+      setTimeout(() => sparkle.remove(), 800);
+    }
+    
+    // Create floating points text
+    const pointsText = document.createElement('div');
+    pointsText.className = 'tap-sparkle-text';
+    pointsText.textContent = `+${points} ✨`;
+    pointsText.style.left = `${x}px`;
+    pointsText.style.top = `${y}px`;
+    
+    document.body.appendChild(pointsText);
+    setTimeout(() => pointsText.remove(), 1000);
+  };
+  
+  // Option B: Transform to Star (25-30 pts phrases + newly unlocked)
+  const createTransformStar = (x, y, points, isGolden = false) => {
+    const starElement = document.createElement('div');
+    starElement.className = isGolden ? 'tap-transform-star-glow' : 'tap-transform-star';
+    starElement.textContent = isGolden ? '⭐✨' : '⭐';
+    starElement.style.left = `${x}px`;
+    starElement.style.top = `${y}px`;
+    
+    document.body.appendChild(starElement);
+    setTimeout(() => starElement.remove(), isGolden ? 1500 : 1200);
+    
+    // Add points text that appears after star emerges
+    setTimeout(() => {
+      const pointsText = document.createElement('div');
+      pointsText.className = 'tap-star-float';
+      pointsText.textContent = `+${points}`;
+      pointsText.style.left = `${x}px`;
+      pointsText.style.top = `${y - 30}px`;
+      pointsText.style.color = isGolden ? '#fbbf24' : '#f59e0b';
+      
+      document.body.appendChild(pointsText);
+      setTimeout(() => pointsText.remove(), 800);
+    }, 300);
+  };
+  
+  // Main function to create tap effect based on phrase characteristics
+  const createTapEffect = (x, y, points, isNewlyUnlocked) => {
+    if (isNewlyUnlocked) {
+      // Newly unlocked: Transform with extra glow (most dramatic)
+      createTransformStar(x, y, points, true);
+    } else if (points >= 25) {
+      // 25-30 pts: Transform to star
+      createTransformStar(x, y, points, false);
+    } else if (points >= 15) {
+      // 15-20 pts: Sparkle burst
+      createSparkleBurst(x, y, points);
+    } else {
+      // 10 pts: Simple star float
+      createStarFloat(x, y, points);
+    }
+  };
+  
+  // ===== END TAP EFFECT ANIMATIONS =====
+
   // Start game
   const startGame = (mode = gameMode) => {
     console.log(`[START GAME] Mode parameter: ${mode}, gameMode state: ${gameMode}`);
@@ -1801,8 +1895,16 @@ const ZikrGame = () => {
   };
 
   // Handle phrase tap
-  const handlePhraseTap = (phraseId, points, phraseDataId) => {
-    console.log(`[TAP] gameMode: ${gameMode}, phraseId: ${phraseId}, tasbihCurrentCount: ${tasbihCurrentCount}`);
+  const handlePhraseTap = (event, phraseId, points, phraseDataId, isNewlyUnlocked = false) => {
+    console.log(`[TAP] gameMode: ${gameMode}, phraseId: ${phraseId}, points: ${points}, isNewlyUnlocked: ${isNewlyUnlocked}`);
+    
+    // Get tap position for animation
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    
+    // Create tap effect animation based on points and unlock status
+    createTapEffect(x, y, points, isNewlyUnlocked);
     
     // Play tap success sound
     playSound('tapSuccess');
@@ -2581,7 +2683,7 @@ const ZikrGame = () => {
               <div
                 key={phrase.id}
                 id={`phrase-${phrase.id}`}
-                onClick={() => handlePhraseTap(phrase.id, phrase.data.points, phrase.data.id)}
+                onClick={(e) => handlePhraseTap(e, phrase.id, phrase.data.points, phrase.data.id, phrase.isNewlyUnlocked)}
                 style={{
                   position: 'absolute',
                   left: `${phrase.position}%`,
