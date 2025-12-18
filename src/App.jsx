@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, Heart, Pause, Play, Lock, Unlock, LogOut, User, Award, TrendingUp, Sparkles, Star, Flame, Clock, Target, Zap, Crown, Medal, Users, Circle } from 'lucide-react';
+import { Trophy, Heart, Pause, Play, Lock, Unlock, LogOut, User, Award, TrendingUp, Sparkles, Star, Flame, Clock, Target, Zap, Crown, Medal, Users, Circle, Shield } from 'lucide-react';
 
 // Firebase imports
 import { onAuthStateChanged } from 'firebase/auth';
@@ -661,6 +661,13 @@ const ZikrGame = () => {
     completion: 0.9     // 90%
   };
   
+  // Streak Freeze Token System
+  const [showTokenEarned, setShowTokenEarned] = useState(false);
+  const [showTokenUsed, setShowTokenUsed] = useState(false);
+  const [tokenUsedMessage, setTokenUsedMessage] = useState('');
+  const [showFreezeCalendar, setShowFreezeCalendar] = useState(false);
+  const [selectedFreezeDates, setSelectedFreezeDates] = useState([]);
+  
   // Leaderboard state
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [leaderboardUserContext, setLeaderboardUserContext] = useState([]);
@@ -767,6 +774,59 @@ const ZikrGame = () => {
     }
   }, [screen, isAuthenticated]);
 
+  // ===== STREAK FREEZE TOKEN SYSTEM =====
+  
+  // Calculate freeze tokens from lifetime points
+  const calculateFreezeTokens = (lifetimePoints) => {
+    const tokensEarned = Math.floor(lifetimePoints / 30000);
+    return Math.min(tokensEarned, 10); // Max 10 tokens
+  };
+  
+  // Check if a specific date has active freeze
+  const isDateFrozen = (dateString) => {
+    const activeFreezes = currentUser?.activeFreezes || [];
+    return activeFreezes.includes(dateString);
+  };
+  
+  // Activate manual freeze for selected dates
+  const activateManualFreeze = async (dates) => {
+    if (!currentUser || !currentUser.userId) return;
+    
+    const availableTokens = calculateFreezeTokens(currentUser.totalLifetimePoints || 0);
+    const usedTokens = (currentUser.activeFreezes || []).length;
+    const remainingTokens = availableTokens - usedTokens;
+    
+    if (dates.length > remainingTokens) {
+      alert(`Not enough tokens! You have ${remainingTokens} tokens available.`);
+      return;
+    }
+    
+    // Add dates to active freezes
+    const currentFreezes = currentUser.activeFreezes || [];
+    const newFreezes = [...currentFreezes, ...dates];
+    
+    try {
+      await saveGameProgress(currentUser.userId, {
+        activeFreezes: newFreezes
+      });
+      
+      setCurrentUser(prev => ({
+        ...prev,
+        activeFreezes: newFreezes
+      }));
+      
+      console.log('[FREEZE] Manual freeze activated for:', dates);
+      setShowFreezeCalendar(false);
+      setSelectedFreezeDates([]);
+      
+      alert(`Streak freeze activated for ${dates.length} day(s)!`);
+    } catch (error) {
+      console.error('[FREEZE] Error activating freeze:', error);
+    }
+  };
+  
+  // ===== END STREAK FREEZE TOKEN SYSTEM =====
+
   // ===== DAILY STREAK SYSTEM (Calendar-based) =====
   
   // Update daily streak (called when game starts)
@@ -801,9 +861,80 @@ const ZikrGame = () => {
         newStreak += 1;
         console.log('[STREAK] Consecutive day - streak incremented to:', newStreak);
       } else {
-        // Missed 1+ days - reset streak
-        newStreak = 1;
-        console.log('[STREAK] Missed', daysDifference - 1, 'days - streak reset to 1');
+        // Missed 1+ days - check for freeze tokens or active freezes
+        const missedDays = daysDifference - 1;
+        console.log('[STREAK] Missed', missedDays, 'days - checking for freeze tokens...');
+        
+        // Check if missed days have active freezes or can use tokens
+        let canProtectStreak = false;
+        const activeFreezes = currentUser.activeFreezes || [];
+        const availableTokens = calculateFreezeTokens(currentUser.totalLifetimePoints || 0);
+        const usedTokens = activeFreezes.length;
+        const remainingTokens = availableTokens - usedTokens;
+        
+        // Check if all missed days are covered by active freezes
+        const allMissedDaysFrozen = Array.from({length: missedDays}, (_, i) => {
+          const missedDate = new Date(lastPlayedDate);
+          missedDate.setDate(missedDate.getDate() + i + 1);
+          const dateString = missedDate.toISOString().split('T')[0];
+          return activeFreezes.includes(dateString);
+        }).every(Boolean);
+        
+        if (allMissedDaysFrozen) {
+          // All missed days were manually frozen
+          newStreak += 1;
+          canProtectStreak = true;
+          console.log('[FREEZE] All missed days covered by manual freezes');
+        } else if (missedDays <= remainingTokens) {
+          // Auto-use tokens to protect streak
+          const newFreezes = [...activeFreezes];
+          
+          // Add missed days to active freezes (auto-use tokens)
+          for (let i = 0; i < missedDays; i++) {
+            const missedDate = new Date(lastPlayedDate);
+            missedDate.setDate(missedDate.getDate() + i + 1);
+            const dateString = missedDate.toISOString().split('T')[0];
+            if (!newFreezes.includes(dateString)) {
+              newFreezes.push(dateString);
+            }
+          }
+          
+          // Update active freezes in current user
+          currentUser.activeFreezes = newFreezes;
+          
+          // Continue streak
+          newStreak += 1;
+          canProtectStreak = true;
+          
+          console.log(`[FREEZE] Auto-used ${missedDays} token(s) to protect streak`);
+          
+          // Show notification to user
+          setTokenUsedMessage(`You missed ${missedDays} day(s)!\nStreak Freeze used 🛡️\nYour ${newStreak - 1}-day streak is safe!\nTokens remaining: ${remainingTokens - missedDays}/10`);
+          setShowTokenUsed(true);
+        } else {
+          // Not enough tokens - streak breaks
+          newStreak = 1;
+          console.log('[FREEZE] Not enough tokens - streak reset to 1');
+          
+          // Show message about no tokens
+          if (remainingTokens === 0) {
+            setTokenUsedMessage(`You missed ${missedDays} day(s)!\nNo streak freezes available.\nStreak reset to 1.\nKeep playing to earn tokens!\n(Every 30,000 lifetime points = 1 token)`);
+          } else {
+            setTokenUsedMessage(`You missed ${missedDays} day(s)!\nOnly ${remainingTokens} token(s) available.\nStreak reset to 1.\nKeep playing to earn more tokens!`);
+          }
+          setShowTokenUsed(true);
+        }
+        
+        // Update active freezes in database if tokens were used
+        if (canProtectStreak) {
+          try {
+            await saveGameProgress(currentUser.userId, {
+              activeFreezes: currentUser.activeFreezes
+            });
+          } catch (error) {
+            console.error('[FREEZE] Error updating active freezes:', error);
+          }
+        }
       }
     }
     
@@ -847,6 +978,25 @@ const ZikrGame = () => {
     // Use current streak (already updated by updateDailyStreak when game started)
     const newStreak = currentUser.currentStreak || 0;
     const newLongestStreak = currentUser.longestStreak || 0;
+    
+    // Track lifetime points and check for token earning
+    const previousLifetimePoints = currentUser.totalLifetimePoints || 0;
+    const newLifetimePoints = previousLifetimePoints + sessionPoints;
+    
+    // Check if user earned new token (crossed 30K threshold)
+    const previousTokens = calculateFreezeTokens(previousLifetimePoints);
+    const newTokens = calculateFreezeTokens(newLifetimePoints);
+    
+    if (newTokens > previousTokens) {
+      // User earned new token(s)!
+      const tokensEarned = newTokens - previousTokens;
+      console.log(`[TOKEN] Earned ${tokensEarned} new freeze token(s)!`);
+      
+      // Show celebration notification
+      setTimeout(() => {
+        setShowTokenEarned(true);
+      }, 1000);
+    }
     
     // Check for new achievements
     const currentAchievements = currentUser.achievements || [];
@@ -917,6 +1067,7 @@ const ZikrGame = () => {
     // Prepare data for Firebase
     const progressData = {
       totalPoints: points,
+      totalLifetimePoints: newLifetimePoints, // Track cumulative lifetime points
       unlockedPhrases: getUnlockedPhraseIds(points),
       totalZikrTime: newTotalTime,
       achievements: newAchievements,
@@ -927,7 +1078,8 @@ const ZikrGame = () => {
       dailyPoints: currentUser.dailyPoints || 0,
       lastPointsResetDate: currentUser.lastPointsResetDate || new Date().toISOString().split('T')[0],
       asmaTotalTaps: asmaTotalTaps, // Save Asma tap count
-      tasbihTotalCounts: tasbihTotalCounts // Save Tasbih total counts
+      tasbihTotalCounts: tasbihTotalCounts, // Save Tasbih total counts
+      activeFreezes: currentUser.activeFreezes || [] // Save active freeze dates
     };
     
     // Save to Firebase
@@ -2447,9 +2599,17 @@ const ZikrGame = () => {
                   <p className="text-[#64748b]">Zikr Time: <span className="font-bold text-[#a855f7]">{Math.floor((currentUser?.totalZikrTime || 0) / 60)}m</span></p>
                 </div>
                 {currentUser?.currentStreak > 0 && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <Flame className="text-[#10b981]" size={20} />
-                    <span className="text-sm font-semibold text-[#10b981]">{currentUser.currentStreak} Day Streak!</span>
+                  <div className="flex items-center gap-4 mt-2">
+                    <div className="flex items-center gap-2">
+                      <Flame className="text-[#10b981]" size={20} />
+                      <span className="text-sm font-semibold text-[#10b981]">{currentUser.currentStreak} Day Streak!</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                      <Shield className="text-blue-600" size={16} />
+                      <span className="text-sm font-semibold text-blue-700">
+                        {calculateFreezeTokens(currentUser.totalLifetimePoints || 0) - (currentUser.activeFreezes || []).length}/10
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2987,6 +3147,85 @@ const ZikrGame = () => {
             </div>
           </div>
 
+          {/* Streak Freeze Management */}
+          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
+            <h3 className="text-xl font-bold text-[#0f172a] mb-4 flex items-center gap-2">
+              <Shield className="text-blue-600" size={24} />
+              Streak Freeze Tokens
+            </h3>
+            
+            <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-6 mb-4 border-2 border-blue-200">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Available Tokens</p>
+                  <p className="text-4xl font-bold text-blue-600">
+                    {calculateFreezeTokens(currentUser?.totalLifetimePoints || 0) - (currentUser?.activeFreezes || []).length}
+                    <span className="text-2xl text-gray-500">/10</span>
+                  </p>
+                </div>
+                <Shield className="text-blue-600" size={64} />
+              </div>
+              
+              <div className="space-y-2 mb-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Lifetime Points</span>
+                  <span className="font-bold text-gray-800">{currentUser?.totalLifetimePoints || 0}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Tokens Earned</span>
+                  <span className="font-bold text-blue-600">{calculateFreezeTokens(currentUser?.totalLifetimePoints || 0)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Tokens Used</span>
+                  <span className="font-bold text-gray-800">{(currentUser?.activeFreezes || []).length}</span>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-lg p-4 mb-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>How it works:</strong>
+                </p>
+                <ul className="text-sm text-gray-700 space-y-1 list-disc list-inside">
+                  <li>Earn 1 token every 30,000 lifetime points</li>
+                  <li>Max 10 tokens (perfect for Ramadan etikaf!)</li>
+                  <li>Auto-protect: Tokens used if you miss a day</li>
+                  <li>Manual: Plan ahead for travel or special events</li>
+                </ul>
+              </div>
+              
+              <button
+                onClick={() => setShowFreezeCalendar(true)}
+                className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <Shield size={20} />
+                Schedule Freeze Dates
+              </button>
+            </div>
+            
+            {/* Active Freezes */}
+            {(currentUser?.activeFreezes || []).length > 0 && (
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <p className="font-semibold text-gray-800 mb-3">Active Freezes:</p>
+                <div className="space-y-2">
+                  {(currentUser?.activeFreezes || []).sort().map(dateString => {
+                    const date = new Date(dateString + 'T00:00:00');
+                    return (
+                      <div key={dateString} className="flex items-center justify-between bg-white rounded-lg p-3 border border-green-200">
+                        <span className="text-sm font-medium text-gray-700">
+                          {date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                        <span className="text-green-600 font-semibold flex items-center gap-1 text-sm">
+                          <Shield size={14} />
+                          Protected
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Unlocked Phrases */}
           <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
             <h3 className="text-xl font-bold text-[#0f172a] mb-4 flex items-center gap-2">
@@ -3343,6 +3582,150 @@ const ZikrGame = () => {
             </div>
           )}
         </div>
+        
+        {/* Token Earned Celebration Modal */}
+        {showTokenEarned && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000]" onClick={() => setShowTokenEarned(false)}>
+            <div className="bg-white rounded-3xl p-8 max-w-md mx-4 shadow-2xl transform animate-bounce" onClick={(e) => e.stopPropagation()}>
+              <div className="text-center">
+                <div className="text-6xl mb-4">🎉</div>
+                <h2 className="text-3xl font-bold text-blue-600 mb-2">Streak Freeze Earned!</h2>
+                <div className="text-6xl my-4">🛡️</div>
+                <p className="text-lg text-gray-700 mb-2">
+                  You now have <span className="font-bold text-blue-600">{calculateFreezeTokens(currentUser?.totalLifetimePoints || 0) - (currentUser?.activeFreezes || []).length}</span> freeze token{(calculateFreezeTokens(currentUser?.totalLifetimePoints || 0) - (currentUser?.activeFreezes || []).length) !== 1 ? 's' : ''}!
+                </p>
+                <p className="text-sm text-gray-500 mb-6">
+                  Protect your streak during unavoidable absences
+                </p>
+                <button
+                  onClick={() => setShowTokenEarned(false)}
+                  className="bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Awesome!
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Token Used Notification Modal */}
+        {showTokenUsed && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000]" onClick={() => setShowTokenUsed(false)}>
+            <div className="bg-white rounded-3xl p-8 max-w-md mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="text-center">
+                <div className="text-6xl mb-4">
+                  {(currentUser?.currentStreak || 0) > 1 ? '🛡️' : '💔'}
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                  {(currentUser?.currentStreak || 0) > 1 ? 'Streak Protected!' : 'Streak Broken'}
+                </h2>
+                <p className="text-gray-700 whitespace-pre-line mb-6">
+                  {tokenUsedMessage}
+                </p>
+                <button
+                  onClick={() => setShowTokenUsed(false)}
+                  className="bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Freeze Calendar Modal */}
+        {showFreezeCalendar && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000]" onClick={() => setShowFreezeCalendar(false)}>
+            <div className="bg-white rounded-3xl p-8 max-w-2xl mx-4 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Activate Streak Freeze</h2>
+                <p className="text-gray-600">Select dates to freeze your streak</p>
+                <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Available Tokens</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {calculateFreezeTokens(currentUser?.totalLifetimePoints || 0) - (currentUser?.activeFreezes || []).length}/10
+                      </p>
+                    </div>
+                    <Shield className="text-blue-600" size={48} />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-3 mb-6">
+                {Array.from({ length: 14 }, (_, i) => {
+                  const date = new Date();
+                  date.setDate(date.getDate() + i + 1);
+                  const dateString = date.toISOString().split('T')[0];
+                  const isAlreadyFrozen = (currentUser?.activeFreezes || []).includes(dateString);
+                  const isSelected = selectedFreezeDates.includes(dateString);
+                  
+                  return (
+                    <div
+                      key={dateString}
+                      onClick={() => {
+                        if (isAlreadyFrozen) return;
+                        
+                        if (isSelected) {
+                          setSelectedFreezeDates(prev => prev.filter(d => d !== dateString));
+                        } else {
+                          setSelectedFreezeDates(prev => [...prev, dateString]);
+                        }
+                      }}
+                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                        isAlreadyFrozen
+                          ? 'bg-green-50 border-green-300 cursor-not-allowed'
+                          : isSelected
+                          ? 'bg-blue-100 border-blue-500'
+                          : 'bg-gray-50 border-gray-200 hover:border-blue-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-gray-800">
+                            {date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                          </p>
+                          <p className="text-sm text-gray-500">{dateString}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isAlreadyFrozen && (
+                            <span className="text-green-600 font-semibold flex items-center gap-1">
+                              <Shield size={16} />
+                              Active
+                            </span>
+                          )}
+                          {isSelected && !isAlreadyFrozen && (
+                            <span className="text-blue-600 font-semibold">✓ Selected</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowFreezeCalendar(false);
+                    setSelectedFreezeDates([]);
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => activateManualFreeze(selectedFreezeDates)}
+                  disabled={selectedFreezeDates.length === 0}
+                  className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  Activate ({selectedFreezeDates.length} {selectedFreezeDates.length === 1 ? 'day' : 'days'})
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
