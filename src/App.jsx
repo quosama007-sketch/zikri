@@ -645,6 +645,22 @@ const ZikrGame = () => {
   const nextAudioRef = useRef(null); // For preloading
   const isFadingRef = useRef(false);
   
+  // Sound Effects System
+  const [soundsLoaded, setSoundsLoaded] = useState(false);
+  const [soundsEnabled, setSoundsEnabled] = useState(true);
+  const soundRefs = useRef({
+    tapSuccess: null,
+    phraseMiss: null,
+    phraseUnlock: null,
+    completion: null
+  });
+  const soundVolumes = {
+    tapSuccess: 0.6,    // 60%
+    phraseMiss: 0.4,    // 40%
+    phraseUnlock: 0.8,  // 80%
+    completion: 0.9     // 90%
+  };
+  
   // Leaderboard state
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [leaderboardUserContext, setLeaderboardUserContext] = useState([]);
@@ -1072,6 +1088,82 @@ const ZikrGame = () => {
       }
     }
   };
+  
+  // ===== SOUND EFFECTS SYSTEM =====
+  
+  // Load all sound effects
+  const loadSoundEffects = () => {
+    console.log('[SOUNDS] Loading sound effects...');
+    
+    try {
+      // Load all sound files
+      soundRefs.current.tapSuccess = new Audio('/assets/audio/Tap Success.mp3');
+      soundRefs.current.phraseMiss = new Audio('/assets/audio/Phrase Miss.mp3');
+      soundRefs.current.phraseUnlock = new Audio('/assets/audio/Phrase Unlock.mp3');
+      soundRefs.current.completion = new Audio('/assets/audio/Completion.mp3');
+      
+      // Set volumes
+      soundRefs.current.tapSuccess.volume = soundVolumes.tapSuccess;
+      soundRefs.current.phraseMiss.volume = soundVolumes.phraseMiss;
+      soundRefs.current.phraseUnlock.volume = soundVolumes.phraseUnlock;
+      soundRefs.current.completion.volume = soundVolumes.completion;
+      
+      // Preload all sounds
+      Object.values(soundRefs.current).forEach(sound => {
+        if (sound) sound.preload = 'auto';
+      });
+      
+      setSoundsLoaded(true);
+      console.log('[SOUNDS] All sound effects loaded successfully!');
+    } catch (error) {
+      console.error('[SOUNDS] Error loading sound effects:', error);
+    }
+  };
+  
+  // Play a sound effect
+  const playSound = (soundName) => {
+    if (!soundsEnabled || !soundsLoaded) return;
+    
+    const sound = soundRefs.current[soundName];
+    if (!sound) {
+      console.warn(`[SOUNDS] Sound "${soundName}" not found`);
+      return;
+    }
+    
+    try {
+      // Clone and play (allows overlapping sounds)
+      const soundClone = sound.cloneNode();
+      soundClone.volume = sound.volume;
+      soundClone.play().catch(err => {
+        console.log(`[SOUNDS] Play prevented for ${soundName}:`, err);
+      });
+    } catch (error) {
+      console.error(`[SOUNDS] Error playing ${soundName}:`, error);
+    }
+  };
+  
+  // Load sound effects on component mount
+  useEffect(() => {
+    loadSoundEffects();
+    
+    // Cleanup
+    return () => {
+      Object.values(soundRefs.current).forEach(sound => {
+        if (sound) {
+          sound.pause();
+          sound.src = '';
+        }
+      });
+    };
+  }, []);
+  
+  // Toggle sound effects on/off
+  const toggleSounds = () => {
+    setSoundsEnabled(!soundsEnabled);
+    console.log(`[SOUNDS] Sound effects ${!soundsEnabled ? 'enabled' : 'disabled'}`);
+  };
+  
+  // ===== END SOUND EFFECTS SYSTEM =====
   
   // Handle pause/resume audio
   useEffect(() => {
@@ -1566,6 +1658,9 @@ const ZikrGame = () => {
           // Trigger particle burst effect!
           createParticleBurst(window.innerWidth / 2, window.innerHeight / 2, '#f59e0b');
           
+          // Play unlock sound
+          playSound('phraseUnlock');
+          
           // Mark as newly unlocked based on mode
           if (currentMode === 'focus') {
             // Focus Mode - mark in newlyUnlockedPhrases
@@ -1635,6 +1730,9 @@ const ZikrGame = () => {
         // Check for missed phrases
         const missed = updated.filter(p => p.position > 110);
         if (missed.length > 0) {
+          // Play miss sound for each missed phrase
+          missed.forEach(() => playSound('phraseMiss'));
+          
           // In Tasbih mode, misses don't end the game - only reaching target count ends it
           // CRITICAL: Use gameModeRef.current to avoid stale closure in setInterval
           if (gameModeRef.current !== 'tasbih') {
@@ -1706,6 +1804,9 @@ const ZikrGame = () => {
   const handlePhraseTap = (phraseId, points, phraseDataId) => {
     console.log(`[TAP] gameMode: ${gameMode}, phraseId: ${phraseId}, tasbihCurrentCount: ${tasbihCurrentCount}`);
     
+    // Play tap success sound
+    playSound('tapSuccess');
+    
     setPhrases(prev => prev.filter(p => p.id !== phraseId));
     
     // Update session score ONLY for Focus Mode (point-based)
@@ -1731,6 +1832,9 @@ const ZikrGame = () => {
           
           // Trigger particle burst effect!
           createParticleBurst(window.innerWidth / 2, window.innerHeight / 2, '#a855f7');
+          
+          // Play unlock sound
+          playSound('phraseUnlock');
           
           // Add to newly unlocked tracking
           setNewlyUnlockedAsmaNames(prevUnlocked => {
@@ -1859,6 +1963,9 @@ const ZikrGame = () => {
 
   // End game
   const endGame = () => {
+    // Play completion sound
+    playSound('completion');
+    
     stopGameLoop();
     const duration = gameStartTimeRef.current ? Math.floor((Date.now() - gameStartTimeRef.current) / 1000) : 0;
     
