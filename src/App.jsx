@@ -767,42 +767,44 @@ const ZikrGame = () => {
     }
   }, [screen, isAuthenticated]);
 
-  // Save user progress
-  const saveProgress = async (points, additionalTime = 0, sessionAccuracy = 0, sessionPoints = 0) => {
-    if (!currentUser || !currentUser.userId) return false;
+  // ===== DAILY STREAK SYSTEM (Calendar-based) =====
+  
+  // Update daily streak (called when game starts)
+  const updateDailyStreak = async () => {
+    if (!currentUser || !currentUser.userId) return;
     
-    const newTotalTime = (currentUser.totalZikrTime || 0) + additionalTime;
-    const newSessionsCompleted = (currentUser.sessionsCompleted || 0) + 1;
-    
-    // Calculate daily streak (24-hour window)
     const now = new Date();
+    const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Today at midnight
+    
     const lastPlayed = currentUser.lastPlayedDate ? new Date(currentUser.lastPlayedDate) : null;
-    const hoursSinceLastPlayed = lastPlayed ? (now - lastPlayed) / (1000 * 60 * 60) : null;
+    const lastPlayedDate = lastPlayed ? new Date(lastPlayed.getFullYear(), lastPlayed.getMonth(), lastPlayed.getDate()) : null;
     
     let newStreak = currentUser.currentStreak || 0;
     let newLongestStreak = currentUser.longestStreak || 0;
     
-    if (!lastPlayed) {
-      // First time playing
+    if (!lastPlayedDate) {
+      // First time playing ever
       newStreak = 1;
-      console.log('[STREAK] First play - streak set to 1');
-    } else if (hoursSinceLastPlayed <= 24) {
-      // Played within 24 hours - maintain or increment streak
-      const lastPlayedDate = lastPlayed.toISOString().split('T')[0];
-      const todayDate = now.toISOString().split('T')[0];
+      console.log('[STREAK] First play ever - streak set to 1');
+    } else {
+      // Calculate days between last played and today
+      const daysDifference = Math.floor((todayDate - lastPlayedDate) / (1000 * 60 * 60 * 24));
       
-      if (lastPlayedDate === todayDate) {
+      console.log('[STREAK] Days since last play:', daysDifference);
+      
+      if (daysDifference === 0) {
         // Already played today - keep streak
         console.log('[STREAK] Already played today - maintaining streak:', newStreak);
-      } else {
-        // Played yesterday within 24 hours - increment
+        return; // Don't update database, just return
+      } else if (daysDifference === 1) {
+        // Played yesterday - increment streak
         newStreak += 1;
-        console.log('[STREAK] Consecutive play - streak incremented to:', newStreak);
+        console.log('[STREAK] Consecutive day - streak incremented to:', newStreak);
+      } else {
+        // Missed 1+ days - reset streak
+        newStreak = 1;
+        console.log('[STREAK] Missed', daysDifference - 1, 'days - streak reset to 1');
       }
-    } else {
-      // More than 24 hours - reset streak
-      newStreak = 1;
-      console.log('[STREAK] Missed 24-hour window - streak reset to 1');
     }
     
     // Update longest streak if current is higher
@@ -810,6 +812,41 @@ const ZikrGame = () => {
       newLongestStreak = newStreak;
       console.log('[STREAK] New longest streak!', newLongestStreak);
     }
+    
+    // Update in Firebase
+    try {
+      await saveGameProgress(currentUser.userId, {
+        currentStreak: newStreak,
+        longestStreak: newLongestStreak,
+        lastPlayedDate: now.toISOString()
+      });
+      
+      // Update local state
+      setCurrentUser(prev => ({
+        ...prev,
+        currentStreak: newStreak,
+        longestStreak: newLongestStreak,
+        lastPlayedDate: now.toISOString()
+      }));
+      
+      console.log('[STREAK] Updated in database:', { newStreak, newLongestStreak });
+    } catch (error) {
+      console.error('[STREAK] Error updating streak:', error);
+    }
+  };
+  
+  // ===== END DAILY STREAK SYSTEM =====
+
+  // Save user progress
+  const saveProgress = async (points, additionalTime = 0, sessionAccuracy = 0, sessionPoints = 0) => {
+    if (!currentUser || !currentUser.userId) return false;
+    
+    const newTotalTime = (currentUser.totalZikrTime || 0) + additionalTime;
+    const newSessionsCompleted = (currentUser.sessionsCompleted || 0) + 1;
+    
+    // Use current streak (already updated by updateDailyStreak when game started)
+    const newStreak = currentUser.currentStreak || 0;
+    const newLongestStreak = currentUser.longestStreak || 0;
     
     // Check for new achievements
     const currentAchievements = currentUser.achievements || [];
@@ -884,9 +921,8 @@ const ZikrGame = () => {
       totalZikrTime: newTotalTime,
       achievements: newAchievements,
       sessionsCompleted: newSessionsCompleted,
-      currentStreak: newStreak, // Updated streak
-      longestStreak: newLongestStreak, // Updated longest streak
-      lastPlayedDate: new Date().toISOString(), // Current timestamp
+      currentStreak: newStreak, // Already updated by updateDailyStreak()
+      longestStreak: newLongestStreak, // Already updated by updateDailyStreak()
       phraseCounts: currentUser.phraseCounts || {},
       dailyPoints: currentUser.dailyPoints || 0,
       lastPointsResetDate: currentUser.lastPointsResetDate || new Date().toISOString().split('T')[0],
@@ -1417,6 +1453,9 @@ const ZikrGame = () => {
   // Start game
   const startGame = (mode = gameMode) => {
     console.log(`[START GAME] Mode parameter: ${mode}, gameMode state: ${gameMode}`);
+    
+    // Update daily streak (calendar-based)
+    updateDailyStreak();
     
     // CRITICAL: Set mode ref IMMEDIATELY to prevent spawning wrong items
     gameModeRef.current = mode;
