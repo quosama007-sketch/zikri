@@ -2643,15 +2643,7 @@ const ZikrGame = () => {
                   <div className="text-lg font-bold text-purple-700">{Math.ceil(asmaTotalTaps / 33) * 33} taps</div>
                 </div>
               </div>
-            ) : (
-              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-6 py-2 rounded-full border-2 border-emerald-300">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold text-emerald-700">{sessionStats.totalTaps}</span>
-                  <span className="text-gray-500 font-semibold">/</span>
-                  <span className="text-2xl font-bold text-gray-600">{totalPhrasesAppeared}</span>
-                </div>
-              </div>
-            )}
+            ) : null}
 
             <button
               onClick={togglePause}
