@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, Heart, Pause, Play, Lock, Unlock, LogOut, User, Award, TrendingUp, Sparkles, Star, Flame, Clock, Target, Zap, Crown, Medal, Users, Circle, Shield } from 'lucide-react';
+import { Trophy, Heart, Pause, Play, Lock, Unlock, LogOut, User, Award, TrendingUp, Sparkles, Star, Flame, Clock, Target, Zap, Crown, Medal, Users, Circle, Shield, Calendar } from 'lucide-react';
 
 // Firebase imports
 import { onAuthStateChanged } from 'firebase/auth';
@@ -606,6 +606,8 @@ const ZikrGame = () => {
   const [gameMode, setGameMode] = useState('focus'); // focus, names, arcade, tasbih
   const [totalPoints, setTotalPoints] = useState(0);
   const [sessionScore, setSessionScore] = useState(0);
+  const [asmaSessionScore, setAsmaSessionScore] = useState(0); // Track Asma mode points
+  const [tasbihSessionScore, setTasbihSessionScore] = useState(0); // Track Tasbih mode points
   const [lives, setLives] = useState(5);
   const [consecutiveMisses, setConsecutiveMisses] = useState(0);
   const [bismillahCount, setBismillahCount] = useState(0); // Track total Bismillah spawns
@@ -667,6 +669,11 @@ const ZikrGame = () => {
   const [tokenUsedMessage, setTokenUsedMessage] = useState('');
   const [showFreezeCalendar, setShowFreezeCalendar] = useState(false);
   const [selectedFreezeDates, setSelectedFreezeDates] = useState([]);
+  
+  // Calendar Activity Tracker
+  const [calendarMetric, setCalendarMetric] = useState('taps'); // 'taps', 'points', 'time'
+  const [calendarView, setCalendarView] = useState('week'); // 'day', 'week', 'month', 'year'
+  const [selectedDate, setSelectedDate] = useState(new Date());
   
   // Leaderboard state
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -1081,6 +1088,19 @@ const ZikrGame = () => {
       tasbihTotalCounts: tasbihTotalCounts, // Save Tasbih total counts
       activeFreezes: currentUser.activeFreezes || [] // Save active freeze dates
     };
+    
+    // Update daily stats for calendar tracker
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const dailyStats = currentUser.dailyStats || {};
+    const todayStats = dailyStats[today] || { taps: 0, points: 0, time: 0 };
+    
+    dailyStats[today] = {
+      taps: todayStats.taps + sessionStats.totalTaps,
+      points: todayStats.points + sessionPoints,
+      time: todayStats.time + additionalTime
+    };
+    
+    progressData.dailyStats = dailyStats;
     
     // Save to Firebase
     const result = await saveGameProgress(currentUser.userId, progressData);
@@ -1637,6 +1657,8 @@ const ZikrGame = () => {
       setScreen('game');
       setSessionScore(0);
       sessionScoreRef.current = 0;
+      setAsmaSessionScore(0); // Reset Asma session score
+      setTasbihSessionScore(0); // Reset Tasbih session score
       setLives(5);
       setConsecutiveMisses(0);
       setBismillahCount(0); // Reset Bismillah counter
@@ -2111,8 +2133,11 @@ const ZikrGame = () => {
       });
     }
     
-    // Asma Mode: Increment tap counter for 33-tap unlock system
+    // Asma Mode: Increment tap counter for 33-tap unlock system + Award points
     if (gameMode === 'asma') {
+      // Award 10 points per tap
+      setAsmaSessionScore(prev => prev + 10);
+      
       setAsmaTotalTaps(prev => {
         const newTaps = prev + 1;
         const oldUnlockedCount = getUnlockedAsmaIds(prev).length;
@@ -2219,6 +2244,13 @@ const ZikrGame = () => {
         // Goal achieved! End game
         console.log(`[TASBIH COMPLETE] Target reached! ${newCount}/${tasbihTargetCount}`);
         
+        // Calculate points: phrase.points × count
+        if (tasbihSelectedPhrase) {
+          const tasbihPoints = tasbihSelectedPhrase.points * tasbihTargetCount;
+          setTasbihSessionScore(tasbihPoints);
+          console.log(`[TASBIH POINTS] ${tasbihSelectedPhrase.points} × ${tasbihTargetCount} = ${tasbihPoints} points`);
+        }
+        
         // Trigger fireworks celebration!
         createFireworks();
         
@@ -2262,9 +2294,16 @@ const ZikrGame = () => {
     stopGameLoop();
     const duration = gameStartTimeRef.current ? Math.floor((Date.now() - gameStartTimeRef.current) / 1000) : 0;
     
-    // CRITICAL: Use sessionScoreRef.current for accurate real-time value
-    // This ensures we get the correct score even when called from setTimeout in game loop
-    const finalSessionScore = sessionScoreRef.current;
+    // Calculate session score from ALL modes
+    let finalSessionScore = 0;
+    if (gameMode === 'focus') {
+      finalSessionScore = sessionScoreRef.current; // Use ref for Focus mode
+    } else if (gameMode === 'asma') {
+      finalSessionScore = asmaSessionScore; // Asma mode points
+    } else if (gameMode === 'tasbih') {
+      finalSessionScore = tasbihSessionScore; // Tasbih mode points
+    }
+    
     const newTotalPoints = totalPoints + finalSessionScore;
     setTotalPoints(newTotalPoints);
     
@@ -2273,8 +2312,12 @@ const ZikrGame = () => {
       : 0;
     
     console.log('[END GAME] Saving progress with:');
+    console.log('  - Game Mode:', gameMode);
     console.log('  - Total Points:', newTotalPoints);
-    console.log('  - Session Score (from ref):', finalSessionScore);
+    console.log('  - Session Score:', finalSessionScore);
+    console.log('    - Focus Score:', sessionScoreRef.current);
+    console.log('    - Asma Score:', asmaSessionScore);
+    console.log('    - Tasbih Score:', tasbihSessionScore);
     console.log('  - Duration:', duration);
     console.log('  - Accuracy:', accuracy);
     console.log('  - Current User:', currentUser?.username);
@@ -2640,8 +2683,8 @@ const ZikrGame = () => {
                 Start Game
               </button>
               
-              {/* Grid of 2 buttons: Leaderboard, Achievements */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Grid of 3 buttons: Leaderboard, Achievements, Calendar */}
+              <div className="grid grid-cols-3 gap-4">
                 <button
                   onClick={() => setScreen('leaderboard')}
                   className="bg-gradient-to-br from-[#fb923c] to-[#f59e0b] text-white py-4 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
@@ -2656,6 +2699,265 @@ const ZikrGame = () => {
                   <Medal size={28} />
                   <span className="text-base">Achievements</span>
                 </button>
+                <button
+                  onClick={() => setScreen('calendar')}
+                  className="bg-gradient-to-br from-[#10b981] to-[#059669] text-white py-4 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
+                >
+                  <Calendar size={28} />
+                  <span className="text-base">Calendar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Calendar Activity Tracker screen
+  if (screen === 'calendar') {
+    const dailyStats = currentUser?.dailyStats || {};
+    
+    // Helper function to get stats for a specific date
+    const getStatsForDate = (date) => {
+      const dateStr = date.toISOString().split('T')[0];
+      return dailyStats[dateStr] || { taps: 0, points: 0, time: 0 };
+    };
+    
+    // Get data based on current view
+    const getViewData = () => {
+      const data = [];
+      const today = new Date(selectedDate);
+      
+      if (calendarView === 'week') {
+        // Get last 7 days
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date(today);
+          date.setDate(date.getDate() - i);
+          const stats = getStatsForDate(date);
+          data.push({
+            date,
+            label: date.toLocaleDateString('en-US', { weekday: 'short' }),
+            value: stats[calendarMetric]
+          });
+        }
+      } else if (calendarView === 'month') {
+        // Get last 30 days
+        for (let i = 29; i >= 0; i--) {
+          const date = new Date(today);
+          date.setDate(date.getDate() - i);
+          const stats = getStatsForDate(date);
+          data.push({
+            date,
+            label: date.getDate().toString(),
+            value: stats[calendarMetric]
+          });
+        }
+      } else if (calendarView === 'year') {
+        // Get last 12 months
+        for (let i = 11; i >= 0; i--) {
+          const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+          // Sum all days in that month
+          const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+          let monthTotal = 0;
+          for (let day = 1; day <= daysInMonth; day++) {
+            const dayDate = new Date(date.getFullYear(), date.getMonth(), day);
+            const stats = getStatsForDate(dayDate);
+            monthTotal += stats[calendarMetric];
+          }
+          data.push({
+            date,
+            label: date.toLocaleDateString('en-US', { month: 'short' }),
+            value: monthTotal
+          });
+        }
+      } else {
+        // Day view - just today
+        const stats = getStatsForDate(today);
+        data.push({
+          date: today,
+          label: 'Today',
+          value: stats[calendarMetric]
+        });
+      }
+      
+      return data;
+    };
+    
+    const viewData = getViewData();
+    const maxValue = Math.max(...viewData.map(d => d.value), 1);
+    const todayStats = getStatsForDate(new Date());
+    
+    // Calculate totals based on view
+    const calculateTotals = () => {
+      let totalTaps = 0, totalPoints = 0, totalTime = 0;
+      viewData.forEach(d => {
+        const stats = getStatsForDate(d.date);
+        totalTaps += stats.taps;
+        totalPoints += stats.points;
+        totalTime += stats.time;
+      });
+      return { totalTaps, totalPoints, totalTime };
+    };
+    
+    const totals = calculateTotals();
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#e0e7ff] to-[#ffffff] p-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-[#0f172a] flex items-center gap-2">
+                <Calendar className="text-emerald-600" size={28} />
+                Zikr Calendar
+              </h2>
+              <button
+                onClick={() => setScreen('menu')}
+                className="text-[#4f46e5] font-semibold hover:underline"
+              >
+                Back
+              </button>
+            </div>
+            
+            {/* Metric Selector */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setCalendarMetric('taps')}
+                className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
+                  calendarMetric === 'taps'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Taps
+              </button>
+              <button
+                onClick={() => setCalendarMetric('points')}
+                className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
+                  calendarMetric === 'points'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Points
+              </button>
+              <button
+                onClick={() => setCalendarMetric('time')}
+                className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
+                  calendarMetric === 'time'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Time
+              </button>
+            </div>
+            
+            {/* View Selector */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCalendarView('week')}
+                className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
+                  calendarView === 'week'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Week
+              </button>
+              <button
+                onClick={() => setCalendarView('month')}
+                className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
+                  calendarView === 'month'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Month
+              </button>
+              <button
+                onClick={() => setCalendarView('year')}
+                className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all ${
+                  calendarView === 'year'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Year
+              </button>
+            </div>
+          </div>
+          
+          {/* Today's Summary */}
+          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
+            <h3 className="text-lg font-bold text-[#0f172a] mb-4">Today's Activity</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-4 border border-emerald-200">
+                <p className="text-sm text-gray-600 mb-1">Taps</p>
+                <p className="text-3xl font-bold text-emerald-700">{todayStats.taps}</p>
+              </div>
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200">
+                <p className="text-sm text-gray-600 mb-1">Points</p>
+                <p className="text-3xl font-bold text-purple-700">{todayStats.points}</p>
+              </div>
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
+                <p className="text-sm text-gray-600 mb-1">Time</p>
+                <p className="text-3xl font-bold text-blue-700">{Math.floor(todayStats.time / 60)}m</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Bar Chart */}
+          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
+            <h3 className="text-lg font-bold text-[#0f172a] mb-4">
+              {calendarView === 'week' ? 'Last 7 Days' : calendarView === 'month' ? 'Last 30 Days' : 'Last 12 Months'}
+            </h3>
+            
+            <div className="space-y-3">
+              {viewData.map((item, index) => {
+                const percentage = maxValue > 0 ? (item.value / maxValue) * 100 : 0;
+                const isToday = item.date.toDateString() === new Date().toDateString();
+                
+                return (
+                  <div key={index} className="flex items-center gap-3">
+                    <div className={`w-16 text-sm font-semibold ${isToday ? 'text-emerald-600' : 'text-gray-600'}`}>
+                      {item.label}
+                    </div>
+                    <div className="flex-1 bg-gray-100 rounded-full h-8 relative overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          isToday ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-gradient-to-r from-emerald-400 to-teal-400'
+                        }`}
+                        style={{ width: `${percentage}%` }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-end pr-3">
+                        <span className="text-sm font-bold text-gray-700">
+                          {calendarMetric === 'time' ? `${Math.floor(item.value / 60)}m` : item.value}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          
+          {/* Period Summary */}
+          <div className="bg-white rounded-3xl shadow-lg p-6 border border-[#cbd5e1]">
+            <h3 className="text-lg font-bold text-[#0f172a] mb-4">Period Summary</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-1">Total Taps</p>
+                <p className="text-2xl font-bold text-emerald-600">{totals.totalTaps}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-1">Total Points</p>
+                <p className="text-2xl font-bold text-purple-600">{totals.totalPoints}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-1">Total Time</p>
+                <p className="text-2xl font-bold text-blue-600">{Math.floor(totals.totalTime / 60)}m</p>
               </div>
             </div>
           </div>
