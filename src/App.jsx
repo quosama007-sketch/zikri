@@ -783,9 +783,9 @@ const ZikrGame = () => {
 
   // ===== STREAK FREEZE TOKEN SYSTEM =====
   
-  // Calculate freeze tokens from lifetime points
-  const calculateFreezeTokens = (lifetimePoints) => {
-    const tokensEarned = Math.floor(lifetimePoints / 30000);
+  // Calculate freeze tokens from total points
+  const calculateFreezeTokens = (totalPoints) => {
+    const tokensEarned = Math.floor(totalPoints / 30000);
     return Math.min(tokensEarned, 10); // Max 10 tokens
   };
   
@@ -799,7 +799,7 @@ const ZikrGame = () => {
   const activateManualFreeze = async (dates) => {
     if (!currentUser || !currentUser.userId) return;
     
-    const availableTokens = calculateFreezeTokens(currentUser.totalLifetimePoints || 0);
+    const availableTokens = calculateFreezeTokens(currentUser.totalPoints || 0);
     const usedTokens = (currentUser.activeFreezes || []).length;
     const remainingTokens = availableTokens - usedTokens;
     
@@ -875,7 +875,7 @@ const ZikrGame = () => {
         // Check if missed days have active freezes or can use tokens
         let canProtectStreak = false;
         const activeFreezes = currentUser.activeFreezes || [];
-        const availableTokens = calculateFreezeTokens(currentUser.totalLifetimePoints || 0);
+        const availableTokens = calculateFreezeTokens(currentUser.totalPoints || 0);
         const usedTokens = activeFreezes.length;
         const remainingTokens = availableTokens - usedTokens;
         
@@ -925,7 +925,7 @@ const ZikrGame = () => {
           
           // Show message about no tokens
           if (remainingTokens === 0) {
-            setTokenUsedMessage(`You missed ${missedDays} day(s)!\nNo streak freezes available.\nStreak reset to 1.\nKeep playing to earn tokens!\n(Every 30,000 lifetime points = 1 token)`);
+            setTokenUsedMessage(`You missed ${missedDays} day(s)!\nNo streak freezes available.\nStreak reset to 1.\nKeep playing to earn tokens!\n(Every 30,000 total points = 1 token)`);
           } else {
             setTokenUsedMessage(`You missed ${missedDays} day(s)!\nOnly ${remainingTokens} token(s) available.\nStreak reset to 1.\nKeep playing to earn more tokens!`);
           }
@@ -986,18 +986,21 @@ const ZikrGame = () => {
     const newStreak = currentUser.currentStreak || 0;
     const newLongestStreak = currentUser.longestStreak || 0;
     
-    // Track lifetime points and check for token earning
-    const previousLifetimePoints = currentUser.totalLifetimePoints || 0;
-    const newLifetimePoints = previousLifetimePoints + sessionPoints;
+    // Track total points and check for token earning
+    // 'points' parameter is the NEW total points (already calculated in endGame)
+    // 'sessionPoints' is just the points earned this session
+    const previousTotalPoints = currentUser.totalPoints || 0;
+    const newTotalPoints = points; // Use the passed parameter directly!
     
     // Check if user earned new token (crossed 30K threshold)
-    const previousTokens = calculateFreezeTokens(previousLifetimePoints);
-    const newTokens = calculateFreezeTokens(newLifetimePoints);
+    const previousTokens = calculateFreezeTokens(previousTotalPoints);
+    const newTokens = calculateFreezeTokens(newTotalPoints);
     
     if (newTokens > previousTokens) {
       // User earned new token(s)!
       const tokensEarned = newTokens - previousTokens;
       console.log(`[TOKEN] Earned ${tokensEarned} new freeze token(s)!`);
+      console.log(`[TOKEN] Previous total: ${previousTotalPoints}, New total: ${newTotalPoints}`);
       
       // Show celebration notification
       setTimeout(() => {
@@ -1073,8 +1076,7 @@ const ZikrGame = () => {
     
     // Prepare data for Firebase
     const progressData = {
-      totalPoints: points,
-      totalLifetimePoints: newLifetimePoints, // Track cumulative lifetime points
+      totalPoints: points, // Single field, cumulative, never decreases
       unlockedPhrases: getUnlockedPhraseIds(points),
       totalZikrTime: newTotalTime,
       achievements: newAchievements,
@@ -2650,7 +2652,7 @@ const ZikrGame = () => {
                     <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
                       <Shield className="text-blue-600" size={16} />
                       <span className="text-sm font-semibold text-blue-700">
-                        {calculateFreezeTokens(currentUser.totalLifetimePoints || 0) - (currentUser.activeFreezes || []).length}/10
+                        {calculateFreezeTokens(currentUser.totalPoints || 0) - (currentUser.activeFreezes || []).length}/10
                       </span>
                     </div>
                   </div>
@@ -3227,12 +3229,29 @@ const ZikrGame = () => {
                   stopGameLoop();
                   // Save progress before quitting
                   const duration = gameStartTimeRef.current ? Math.floor((Date.now() - gameStartTimeRef.current) / 1000) : 0;
-                  const newTotalPoints = totalPoints + sessionScore;
+                  
+                  // Calculate session score from ALL modes (same as endGame)
+                  let finalSessionScore = 0;
+                  if (gameMode === 'focus') {
+                    finalSessionScore = sessionScoreRef.current;
+                  } else if (gameMode === 'asma') {
+                    finalSessionScore = asmaSessionScore;
+                  } else if (gameMode === 'tasbih') {
+                    finalSessionScore = tasbihSessionScore;
+                  }
+                  
+                  const newTotalPoints = totalPoints + finalSessionScore;
                   const accuracy = sessionStats.totalTaps > 0 
                     ? Math.round((sessionStats.totalTaps / (sessionStats.totalTaps + sessionStats.missedPhrases)) * 100)
                     : 0;
+                  
+                  console.log('[QUIT] Saving progress:');
+                  console.log('  - Game Mode:', gameMode);
+                  console.log('  - Session Score:', finalSessionScore);
+                  console.log('  - New Total Points:', newTotalPoints);
+                  
                   setTotalPoints(newTotalPoints);
-                  saveProgress(newTotalPoints, duration, accuracy, sessionScore);
+                  saveProgress(newTotalPoints, duration, accuracy, finalSessionScore);
                   setScreen('menu');
                 }}
                 className="block w-full mt-4 text-red-600 hover:underline"
@@ -3461,7 +3480,7 @@ const ZikrGame = () => {
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Available Tokens</p>
                   <p className="text-4xl font-bold text-blue-600">
-                    {calculateFreezeTokens(currentUser?.totalLifetimePoints || 0) - (currentUser?.activeFreezes || []).length}
+                    {calculateFreezeTokens(currentUser?.totalPoints || 0) - (currentUser?.activeFreezes || []).length}
                     <span className="text-2xl text-gray-500">/10</span>
                   </p>
                 </div>
@@ -3470,12 +3489,12 @@ const ZikrGame = () => {
               
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Lifetime Points</span>
-                  <span className="font-bold text-gray-800">{currentUser?.totalLifetimePoints || 0}</span>
+                  <span className="text-gray-600">Total Points</span>
+                  <span className="font-bold text-gray-800">{currentUser?.totalPoints || 0}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Tokens Earned</span>
-                  <span className="font-bold text-blue-600">{calculateFreezeTokens(currentUser?.totalLifetimePoints || 0)}</span>
+                  <span className="font-bold text-blue-600">{calculateFreezeTokens(currentUser?.totalPoints || 0)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Tokens Used</span>
@@ -3488,7 +3507,7 @@ const ZikrGame = () => {
                   <strong>How it works:</strong>
                 </p>
                 <ul className="text-sm text-gray-700 space-y-1 list-disc list-inside">
-                  <li>Earn 1 token every 30,000 lifetime points</li>
+                  <li>Earn 1 token every 30,000 total points</li>
                   <li>Max 10 tokens (perfect for Ramadan etikaf!)</li>
                   <li>Auto-protect: Tokens used if you miss a day</li>
                   <li>Manual: Plan ahead for travel or special events</li>
@@ -3894,7 +3913,7 @@ const ZikrGame = () => {
                 <h2 className="text-3xl font-bold text-blue-600 mb-2">Streak Freeze Earned!</h2>
                 <div className="text-6xl my-4">🛡️</div>
                 <p className="text-lg text-gray-700 mb-2">
-                  You now have <span className="font-bold text-blue-600">{calculateFreezeTokens(currentUser?.totalLifetimePoints || 0) - (currentUser?.activeFreezes || []).length}</span> freeze token{(calculateFreezeTokens(currentUser?.totalLifetimePoints || 0) - (currentUser?.activeFreezes || []).length) !== 1 ? 's' : ''}!
+                  You now have <span className="font-bold text-blue-600">{calculateFreezeTokens(currentUser?.totalPoints || 0) - (currentUser?.activeFreezes || []).length}</span> freeze token{(calculateFreezeTokens(currentUser?.totalPoints || 0) - (currentUser?.activeFreezes || []).length) !== 1 ? 's' : ''}!
                 </p>
                 <p className="text-sm text-gray-500 mb-6">
                   Protect your streak during unavoidable absences
@@ -3947,7 +3966,7 @@ const ZikrGame = () => {
                     <div>
                       <p className="text-sm text-gray-600">Available Tokens</p>
                       <p className="text-2xl font-bold text-blue-600">
-                        {calculateFreezeTokens(currentUser?.totalLifetimePoints || 0) - (currentUser?.activeFreezes || []).length}/10
+                        {calculateFreezeTokens(currentUser?.totalPoints || 0) - (currentUser?.activeFreezes || []).length}/10
                       </p>
                     </div>
                     <Shield className="text-blue-600" size={48} />
