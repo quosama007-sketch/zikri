@@ -2455,7 +2455,7 @@ const ZikrGame = () => {
                 type="number"
                 value={tasbihTargetCount}
                 onChange={(e) => setTasbihTargetCount(Math.max(1, parseInt(e.target.value) || 100))}
-                className="flex-1 text-4xl font-bold text-center p-4 border-2 border-blue-300 rounded-xl focus:outline-none focus:border-blue-500"
+                className="flex-1 text-4xl font-bold text-center p-4 border-2 border-blue-300 rounded-xl focus:outline-none focus:border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-800 shadow-inner"
                 min="1"
               />
               <span className="text-2xl text-gray-600 font-semibold">times</span>
@@ -2469,8 +2469,8 @@ const ZikrGame = () => {
                   onClick={() => setTasbihTargetCount(count)}
                   className={`py-3 px-4 rounded-xl font-semibold transition-all ${
                     tasbihTargetCount === count
-                      ? 'bg-blue-500 text-white shadow-lg'
-                      : 'bg-gray-100 text-gray-700 hover:bg-blue-100'
+                      ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg scale-105'
+                      : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 hover:from-blue-100 hover:to-indigo-100 hover:shadow-md'
                   }`}
                 >
                   {count}
@@ -3102,7 +3102,6 @@ const ZikrGame = () => {
                   <div className="h-8 w-px bg-gray-300"></div>
                   <div className="flex items-center gap-2">
                     <div className="text-lg font-bold text-purple-600">{asmaTotalTaps}</div>
-                    <div className="text-gray-600 text-sm">taps</div>
                   </div>
                   <div className="h-8 w-px bg-gray-300"></div>
                   <div className="flex items-center gap-2">
