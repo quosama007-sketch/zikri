@@ -2450,16 +2450,6 @@ const ZikrGame = () => {
           {/* Count Selection */}
           <div className="bg-white rounded-3xl shadow-xl p-8 mb-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Set Target Count</h2>
-            <div className="flex items-center gap-4 mb-4">
-              <input
-                type="number"
-                value={tasbihTargetCount}
-                onChange={(e) => setTasbihTargetCount(Math.max(1, parseInt(e.target.value) || 100))}
-                className="flex-1 text-3xl font-bold text-center p-4 border-2 border-blue-300 rounded-xl focus:outline-none focus:border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-800 shadow-inner"
-                min="1"
-              />
-              <span className="text-xl text-gray-600 font-semibold">times</span>
-            </div>
             
             {/* Quick select buttons */}
             <div className="grid grid-cols-5 gap-3">
