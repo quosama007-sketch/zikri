@@ -2455,10 +2455,10 @@ const ZikrGame = () => {
                 type="number"
                 value={tasbihTargetCount}
                 onChange={(e) => setTasbihTargetCount(Math.max(1, parseInt(e.target.value) || 100))}
-                className="flex-1 text-4xl font-bold text-center p-4 border-2 border-blue-300 rounded-xl focus:outline-none focus:border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-800 shadow-inner"
+                className="flex-1 text-3xl font-bold text-center p-4 border-2 border-blue-300 rounded-xl focus:outline-none focus:border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-800 shadow-inner"
                 min="1"
               />
-              <span className="text-2xl text-gray-600 font-semibold">times</span>
+              <span className="text-xl text-gray-600 font-semibold">times</span>
             </div>
             
             {/* Quick select buttons */}
@@ -2467,7 +2467,7 @@ const ZikrGame = () => {
                 <button
                   key={count}
                   onClick={() => setTasbihTargetCount(count)}
-                  className={`py-3 px-4 rounded-xl font-semibold transition-all ${
+                  className={`py-2.5 px-3 rounded-xl font-semibold transition-all text-base ${
                     tasbihTargetCount === count
                       ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg scale-105'
                       : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 hover:from-blue-100 hover:to-indigo-100 hover:shadow-md'
@@ -3093,7 +3093,6 @@ const ZikrGame = () => {
                     return nextName && tapsRemaining > 0 ? (
                       <div className="flex items-center gap-2 text-sm">
                         <span className="text-purple-600 font-semibold">Next: {nextName.transliteration}</span>
-                        <span className="text-purple-500">({tapsRemaining})</span>
                       </div>
                     ) : (
                       <div className="text-sm text-purple-600 font-semibold">All names unlocked! 🎉</div>
