@@ -2643,27 +2643,40 @@ const ZikrGame = () => {
           {/* Header */}
           <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
             <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-[#0f172a]">As-salamu alaykum, {userDisplayName || currentUser?.displayName || currentUser?.username}!</h2>
-                <div className="flex items-center gap-4 mt-1">
-                  <p className="text-[#64748b]">Total Points: <span className="font-bold text-[#4f46e5]">{totalPoints}</span></p>
-                  <span className="text-[#cbd5e1]">|</span>
-                  <p className="text-[#64748b]">Zikr Time: <span className="font-bold text-[#a855f7]">{Math.floor((currentUser?.totalZikrTime || 0) / 60)}m</span></p>
+              <div className="flex items-center gap-4">
+                {/* Profile Avatar */}
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center text-3xl border-2 border-purple-300 flex-shrink-0">
+                  {profileAvatar === 'dove' && '🕊️'}
+                  {profileAvatar === 'bee' && '🐝'}
+                  {profileAvatar === 'deer' && '🦌'}
+                  {profileAvatar === 'fish' && '🐟'}
+                  {profileAvatar === 'eagle' && '🦅'}
+                  {profileAvatar === 'camel' && '🐪'}
+                  {profileAvatar === 'lion' && '🦁'}
+                  {profileAvatar === 'horse' && '🐎'}
                 </div>
-                {currentUser?.currentStreak > 0 && (
-                  <div className="flex items-center gap-4 mt-2">
-                    <div className="flex items-center gap-2">
-                      <Flame className="text-[#10b981]" size={20} />
-                      <span className="text-sm font-semibold text-[#10b981]">{currentUser.currentStreak} Day Streak!</span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
-                      <Shield className="text-blue-600" size={16} />
-                      <span className="text-sm font-semibold text-blue-700">
-                        {calculateFreezeTokens(currentUser.totalPoints || 0) - (currentUser.activeFreezes || []).length}/10
-                      </span>
-                    </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-[#0f172a]">As-salamu alaykum, {currentUser?.username || currentUser?.displayName}!</h2>
+                  <div className="flex items-center gap-4 mt-1">
+                    <p className="text-[#64748b]">Total Points: <span className="font-bold text-[#4f46e5]">{totalPoints}</span></p>
+                    <span className="text-[#cbd5e1]">|</span>
+                    <p className="text-[#64748b]">Zikr Time: <span className="font-bold text-[#a855f7]">{Math.floor((currentUser?.totalZikrTime || 0) / 60)}m</span></p>
                   </div>
-                )}
+                  {currentUser?.currentStreak > 0 && (
+                    <div className="flex items-center gap-4 mt-2">
+                      <div className="flex items-center gap-2">
+                        <Flame className="text-[#10b981]" size={20} />
+                        <span className="text-sm font-semibold text-[#10b981]">{currentUser.currentStreak} Day Streak!</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                        <Shield className="text-blue-600" size={16} />
+                        <span className="text-sm font-semibold text-blue-700">
+                          {calculateFreezeTokens(currentUser.totalPoints || 0) - (currentUser.activeFreezes || []).length}/10
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               <button onClick={handleLogout} className="p-3 hover:bg-[#f8fafc] rounded-full transition-colors">
                 <LogOut className="text-[#64748b]" size={24} />
@@ -3007,7 +3020,7 @@ const ZikrGame = () => {
                   {profileAvatar === 'horse' && '🐎'}
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-[#0f172a]">{userDisplayName || currentUser?.displayName || 'My Profile'}</h2>
+                  <h2 className="text-2xl font-bold text-[#0f172a]">{currentUser?.username || currentUser?.displayName || 'My Profile'}</h2>
                   <p className="text-sm text-[#64748b]">Customize your experience</p>
                 </div>
               </div>
@@ -3024,16 +3037,12 @@ const ZikrGame = () => {
           <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
             <h3 className="text-xl font-bold text-[#0f172a] mb-4">User Information</h3>
             <div className="space-y-4">
-              {/* Display Name */}
+              {/* Username Display (Read-only) */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Display Name</label>
-                <input
-                  type="text"
-                  value={userDisplayName || currentUser?.displayName || 'Zakir'}
-                  onChange={(e) => setUserDisplayName(e.target.value)}
-                  placeholder="Enter your name"
-                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-800 font-medium focus:border-blue-500 focus:outline-none transition-colors"
-                />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Username</label>
+                <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 font-medium">
+                  {currentUser?.username || currentUser?.displayName || 'User'}
+                </div>
               </div>
               
               {/* Gender Selection */}
@@ -3210,7 +3219,7 @@ const ZikrGame = () => {
                     dove: '🕊️', bee: '🐝', deer: '🦌', fish: '🐟',
                     eagle: '🦅', camel: '🐪', lion: '🦁', horse: '🐎'
                   };
-                  const displayName = userDisplayName || currentUser?.displayName || currentUser?.username || 'A Zakir';
+                  const displayName = currentUser?.username || currentUser?.displayName || 'A Zakir';
                   const avatarEmoji = avatarEmojis[profileAvatar] || '🕊️';
                   const shareText = `${avatarEmoji} ${displayName} here!\\n\\n🕌 I've earned ${totalPoints.toLocaleString()} points on Zikri!\\n📿 Current streak: ${currentUser?.currentStreak || 0} days\\n\\nJoin me in remembering Allah! 🌟`;
                   if (navigator.share) {
@@ -3888,7 +3897,15 @@ const ZikrGame = () => {
             {/* Top 10 Section */}
             <div className="space-y-3">
               <h3 className="text-lg font-bold text-gray-700 mb-4">🏆 Top 10</h3>
-              {leaderboardData.map((user) => (
+              {leaderboardData
+                .filter(user => {
+                  // Hide current user if they disabled visibility
+                  if (user.isCurrentUser && !leaderboardVisible) {
+                    return false;
+                  }
+                  return true;
+                })
+                .map((user) => (
                 <div
                   key={user.userId}
                   className={`rounded-xl p-4 border-2 ${
@@ -3947,8 +3964,8 @@ const ZikrGame = () => {
               )}
             </div>
 
-            {/* User Context Section (if user is not in top 10) */}
-            {leaderboardUserContext.length > 0 && (
+            {/* User Context Section (if user is not in top 10 AND visibility is enabled) */}
+            {leaderboardVisible && leaderboardUserContext.length > 0 && (
               <>
                 <div className="my-6 flex items-center gap-3">
                   <div className="flex-1 h-px bg-gray-300"></div>
@@ -4000,6 +4017,19 @@ const ZikrGame = () => {
                   ))}
                 </div>
               </>
+            )}
+
+            {/* Visibility Disabled Message */}
+            {!leaderboardVisible && (
+              <div className="mt-6 bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <Shield className="text-blue-600" size={24} />
+                  <div>
+                    <p className="font-semibold text-blue-900">Your score is private</p>
+                    <p className="text-sm text-blue-700">You're hidden from the leaderboard. Change in My Profile → Preferences.</p>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
