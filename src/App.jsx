@@ -657,6 +657,8 @@ const ZikrGame = () => {
   const [phraseSpeed, setPhraseSpeed] = useState(2); // 1=Slow, 2=Medium, 3=Fast
   const [userDisplayName, setUserDisplayName] = useState(''); // Editable display name
   const [userGender, setUserGender] = useState(''); // 'male', 'female', or ''
+  const [leaderboardVisible, setLeaderboardVisible] = useState(true); // Leaderboard visibility
+  const [profileAvatar, setProfileAvatar] = useState('dove'); // Selected animal avatar
   const [isAudioLoaded, setIsAudioLoaded] = useState(false);
   const audioRef = useRef(null);
   const nextAudioRef = useRef(null); // For preloading
@@ -2642,7 +2644,7 @@ const ZikrGame = () => {
           <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-[#0f172a]">As-salamu alaykum, {currentUser?.username}!</h2>
+                <h2 className="text-2xl font-bold text-[#0f172a]">As-salamu alaykum, {userDisplayName || currentUser?.displayName || currentUser?.username}!</h2>
                 <div className="flex items-center gap-4 mt-1">
                   <p className="text-[#64748b]">Total Points: <span className="font-bold text-[#4f46e5]">{totalPoints}</span></p>
                   <span className="text-[#cbd5e1]">|</span>
@@ -2993,9 +2995,19 @@ const ZikrGame = () => {
           <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <User className="text-[#3b82f6]" size={32} />
+                {/* Avatar Display */}
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center text-3xl border-2 border-purple-300">
+                  {profileAvatar === 'dove' && '🕊️'}
+                  {profileAvatar === 'bee' && '🐝'}
+                  {profileAvatar === 'deer' && '🦌'}
+                  {profileAvatar === 'fish' && '🐟'}
+                  {profileAvatar === 'eagle' && '🦅'}
+                  {profileAvatar === 'camel' && '🐪'}
+                  {profileAvatar === 'lion' && '🦁'}
+                  {profileAvatar === 'horse' && '🐎'}
+                </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-[#0f172a]">My Profile</h2>
+                  <h2 className="text-2xl font-bold text-[#0f172a]">{userDisplayName || currentUser?.displayName || 'My Profile'}</h2>
                   <p className="text-sm text-[#64748b]">Customize your experience</p>
                 </div>
               </div>
@@ -3120,6 +3132,66 @@ const ZikrGame = () => {
                   ))}
                 </div>
               </div>
+
+              {/* Leaderboard Visibility Toggle */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-gray-800">Leaderboard Visibility</p>
+                  <p className="text-sm text-gray-600">Show your score on the leaderboard</p>
+                </div>
+                <button
+                  onClick={() => setLeaderboardVisible(!leaderboardVisible)}
+                  className={`relative w-16 h-8 rounded-full transition-colors ${
+                    leaderboardVisible ? 'bg-emerald-500' : 'bg-gray-300'
+                  }`}
+                >
+                  <div
+                    className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
+                      leaderboardVisible ? 'transform translate-x-8' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Profile Avatar Selection */}
+          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
+            <h3 className="text-xl font-bold text-[#0f172a] mb-4 flex items-center gap-2">
+              <User className="text-purple-500" size={24} />
+              Profile Avatar
+            </h3>
+            
+            <p className="text-sm text-gray-600 mb-4">Choose your profile picture</p>
+            
+            <div className="grid grid-cols-4 gap-3">
+              {[
+                { id: 'dove', emoji: '🕊️', name: 'Dove' },
+                { id: 'bee', emoji: '🐝', name: 'Bee' },
+                { id: 'deer', emoji: '🦌', name: 'Deer' },
+                { id: 'fish', emoji: '🐟', name: 'Fish' },
+                { id: 'eagle', emoji: '🦅', name: 'Eagle' },
+                { id: 'camel', emoji: '🐪', name: 'Camel' },
+                { id: 'lion', emoji: '🦁', name: 'Lion' },
+                { id: 'horse', emoji: '🐎', name: 'Horse' }
+              ].map((avatar) => (
+                <button
+                  key={avatar.id}
+                  onClick={() => setProfileAvatar(avatar.id)}
+                  className={`p-4 rounded-xl transition-all flex flex-col items-center gap-2 ${
+                    profileAvatar === avatar.id
+                      ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg scale-105'
+                      : 'bg-gray-100 text-gray-700 hover:bg-purple-100 hover:shadow-md'
+                  }`}
+                >
+                  <span className="text-3xl">{avatar.emoji}</span>
+                  <span className={`text-xs font-semibold ${
+                    profileAvatar === avatar.id ? 'text-white' : 'text-gray-600'
+                  }`}>
+                    {avatar.name}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -3134,7 +3206,13 @@ const ZikrGame = () => {
               {/* Share Score */}
               <button
                 onClick={() => {
-                  const shareText = `🕌 I've earned ${totalPoints.toLocaleString()} points on Zikri!\\n📿 Current streak: ${currentUser?.currentStreak || 0} days\\n\\nJoin me in remembering Allah! 🌟`;
+                  const avatarEmojis = {
+                    dove: '🕊️', bee: '🐝', deer: '🦌', fish: '🐟',
+                    eagle: '🦅', camel: '🐪', lion: '🦁', horse: '🐎'
+                  };
+                  const displayName = userDisplayName || currentUser?.displayName || currentUser?.username || 'A Zakir';
+                  const avatarEmoji = avatarEmojis[profileAvatar] || '🕊️';
+                  const shareText = `${avatarEmoji} ${displayName} here!\\n\\n🕌 I've earned ${totalPoints.toLocaleString()} points on Zikri!\\n📿 Current streak: ${currentUser?.currentStreak || 0} days\\n\\nJoin me in remembering Allah! 🌟`;
                   if (navigator.share) {
                     navigator.share({
                       title: 'My Zikri Progress',
