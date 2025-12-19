@@ -655,6 +655,8 @@ const ZikrGame = () => {
   const [currentBackgroundIndex, setCurrentBackgroundIndex] = useState(1);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [phraseSpeed, setPhraseSpeed] = useState(2); // 1=Slow, 2=Medium, 3=Fast
+  const [userDisplayName, setUserDisplayName] = useState(''); // Editable display name
+  const [userGender, setUserGender] = useState(''); // 'male', 'female', or ''
   const [isAudioLoaded, setIsAudioLoaded] = useState(false);
   const audioRef = useRef(null);
   const nextAudioRef = useRef(null); // For preloading
@@ -2911,15 +2913,15 @@ const ZikrGame = () => {
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-4 border border-emerald-200">
                 <p className="text-sm text-gray-600 mb-1">Taps</p>
-                <p className="text-3xl font-bold text-emerald-700">{todayStats.taps}</p>
+                <p className="text-xl font-bold text-emerald-700 break-words">{todayStats.taps}</p>
               </div>
               <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200">
                 <p className="text-sm text-gray-600 mb-1">Points</p>
-                <p className="text-3xl font-bold text-purple-700">{todayStats.points}</p>
+                <p className="text-xl font-bold text-purple-700 break-words">{todayStats.points}</p>
               </div>
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
                 <p className="text-sm text-gray-600 mb-1">Time</p>
-                <p className="text-3xl font-bold text-blue-700">{Math.floor(todayStats.time / 60)}m</p>
+                <p className="text-xl font-bold text-blue-700">{Math.floor(todayStats.time / 60)}m</p>
               </div>
             </div>
           </div>
@@ -3010,23 +3012,54 @@ const ZikrGame = () => {
           <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
             <h3 className="text-xl font-bold text-[#0f172a] mb-4">User Information</h3>
             <div className="space-y-4">
+              {/* Display Name */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Display Name</label>
                 <input
                   type="text"
-                  value={currentUser?.displayName || 'Zakir'}
-                  readOnly
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 font-medium"
+                  value={userDisplayName || currentUser?.displayName || 'Zakir'}
+                  onChange={(e) => setUserDisplayName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-gray-800 font-medium focus:border-blue-500 focus:outline-none transition-colors"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              
+              {/* Gender Selection */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Gender</label>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setUserGender('male')}
+                    className={`flex-1 py-3 rounded-xl font-semibold transition-all ${
+                      userGender === 'male'
+                        ? 'bg-blue-500 text-white shadow-lg'
+                        : 'bg-gray-100 text-gray-700 hover:bg-blue-100'
+                    }`}
+                  >
+                    Male
+                  </button>
+                  <button
+                    onClick={() => setUserGender('female')}
+                    className={`flex-1 py-3 rounded-xl font-semibold transition-all ${
+                      userGender === 'female'
+                        ? 'bg-pink-500 text-white shadow-lg'
+                        : 'bg-gray-100 text-gray-700 hover:bg-pink-100'
+                    }`}
+                  >
+                    Female
+                  </button>
+                </div>
+              </div>
+              
+              {/* Stats Cards */}
+              <div className="grid grid-cols-2 gap-4 pt-2">
                 <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-4 rounded-xl border border-emerald-200">
                   <p className="text-sm text-emerald-600 mb-1">Total Points</p>
-                  <p className="text-2xl font-bold text-emerald-700">{totalPoints.toLocaleString()}</p>
+                  <p className="text-xl font-bold text-emerald-700 break-words">{totalPoints.toLocaleString()}</p>
                 </div>
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
                   <p className="text-sm text-purple-600 mb-1">Current Streak</p>
-                  <p className="text-2xl font-bold text-purple-700">{currentUser?.currentStreak || 0} days</p>
+                  <p className="text-xl font-bold text-purple-700">{currentUser?.currentStreak || 0} days</p>
                 </div>
               </div>
             </div>
@@ -3492,14 +3525,14 @@ const ZikrGame = () => {
             {gameMode === 'focus' && (
               <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-4 border-2 border-emerald-200">
                 <p className="text-gray-600 text-sm mb-1">Points Earned</p>
-                <p className="text-4xl font-bold text-emerald-600">+{sessionScore}</p>
+                <p className="text-2xl font-bold text-emerald-600 break-words">+{sessionScore.toLocaleString()}</p>
               </div>
             )}
             
             {gameMode === 'asma' && (
               <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 border-2 border-purple-200">
                 <p className="text-gray-600 text-sm mb-1">Session Taps</p>
-                <p className="text-4xl font-bold text-purple-600">{sessionStats.totalTaps}</p>
+                <p className="text-2xl font-bold text-purple-600 break-words">{sessionStats.totalTaps}</p>
                 <p className="text-xs text-gray-600 mt-2">Total: {asmaTotalTaps} taps | {getUnlockedAsmaIds(asmaTotalTaps).length}/99 names</p>
               </div>
             )}
@@ -3507,7 +3540,7 @@ const ZikrGame = () => {
             {gameMode === 'tasbih' && (
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border-2 border-blue-200">
                 <p className="text-gray-600 text-sm mb-1">Completed</p>
-                <p className="text-4xl font-bold text-blue-600">{tasbihTargetCount}</p>
+                <p className="text-2xl font-bold text-blue-600">{tasbihTargetCount}</p>
                 <p className="text-sm text-gray-600 mt-2">{tasbihSelectedPhrase?.arabic}</p>
                 {tasbihSelectedPhrase && tasbihTotalCounts[tasbihSelectedPhrase.id] && (
                   <p className="text-xs text-gray-500 mt-1">All-time Tasbih count: {tasbihTotalCounts[tasbihSelectedPhrase.id]}</p>
@@ -3606,11 +3639,11 @@ const ZikrGame = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] rounded-2xl p-4 border border-[#cbd5e1]">
                 <p className="text-[#64748b] text-sm mb-1">Total Points</p>
-                <p className="text-4xl font-bold text-[#4f46e5]">{totalPoints}</p>
+                <p className="text-2xl font-bold text-[#4f46e5] break-words">{totalPoints.toLocaleString()}</p>
               </div>
               <div className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] rounded-2xl p-4 border border-[#cbd5e1]">
                 <p className="text-[#64748b] text-sm mb-1">Total Zikr Time</p>
-                <p className="text-4xl font-bold text-[#a855f7]">{Math.floor((currentUser?.totalZikrTime || 0) / 60)}m</p>
+                <p className="text-2xl font-bold text-[#a855f7]">{Math.floor((currentUser?.totalZikrTime || 0) / 60)}m</p>
               </div>
             </div>
           </div>
@@ -3626,9 +3659,9 @@ const ZikrGame = () => {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Available Tokens</p>
-                  <p className="text-4xl font-bold text-blue-600">
+                  <p className="text-2xl font-bold text-blue-600">
                     {calculateFreezeTokens(currentUser?.totalPoints || 0) - (currentUser?.activeFreezes || []).length}
-                    <span className="text-2xl text-gray-500">/10</span>
+                    <span className="text-xl text-gray-500">/10</span>
                   </p>
                 </div>
                 <Shield className="text-blue-600" size={64} />
