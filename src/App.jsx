@@ -2583,24 +2583,24 @@ const ZikrGame = () => {
               </div>
             </div>
 
-            {/* Tasbih Mode - Shows locked/unlocked based on progress */}
+            {/* Tasbih Mode - Locked until all 27 phrases unlocked */}
             <div 
               onClick={() => {
-                if (getUnlockedPhraseIds(totalPoints).length >= 21) {
+                if (getUnlockedPhraseIds(totalPoints).length >= 27) {
                   setScreen('tasbih-setup');
                 } else {
-                  alert(`Tasbih Mode unlocks when all 21 phrases are unlocked!\nCurrent progress: ${getUnlockedPhraseIds(totalPoints).length}/21`);
+                  alert(`Tasbih Mode unlocks when ALL 27 phrases are unlocked!\nCurrent progress: ${getUnlockedPhraseIds(totalPoints).length}/27\n\nComplete Focus Mode to unlock!`);
                 }
               }}
               className={`bg-white rounded-3xl shadow-xl p-8 cursor-pointer hover:shadow-2xl hover:scale-105 transition-all border-4 ${
-                getUnlockedPhraseIds(totalPoints).length >= 21 
+                getUnlockedPhraseIds(totalPoints).length >= 27 
                   ? 'border-blue-300' 
                   : 'border-gray-300 opacity-60'
               }`}
             >
               <div className="text-center">
                 <div className={`inline-block bg-gradient-to-r text-white rounded-full p-6 mb-4 ${
-                  getUnlockedPhraseIds(totalPoints).length >= 21
+                  getUnlockedPhraseIds(totalPoints).length >= 27
                     ? 'from-blue-500 to-indigo-600'
                     : 'from-gray-400 to-gray-500'
                 }`}>
@@ -2609,7 +2609,7 @@ const ZikrGame = () => {
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">Tasbih Mode</h2>
                 <p className="text-gray-600 mb-4">Focused repetition - Master one phrase</p>
                 <div className={`rounded-xl p-3 text-sm ${
-                  getUnlockedPhraseIds(totalPoints).length >= 21
+                  getUnlockedPhraseIds(totalPoints).length >= 27
                     ? 'bg-blue-50 text-blue-700'
                     : 'bg-gray-50 text-gray-600'
                 }`}>
@@ -2618,15 +2618,15 @@ const ZikrGame = () => {
                   <p>📿 Complete the Goal</p>
                 </div>
                 <div className={`mt-3 border rounded-lg p-2 ${
-                  getUnlockedPhraseIds(totalPoints).length >= 21
+                  getUnlockedPhraseIds(totalPoints).length >= 27
                     ? 'bg-yellow-100 border-yellow-400'
                     : 'bg-gray-100 border-gray-400'
                 }`}>
-                  {getUnlockedPhraseIds(totalPoints).length >= 21 ? (
+                  {getUnlockedPhraseIds(totalPoints).length >= 27 ? (
                     <p className="text-xs text-yellow-800 font-semibold">🔓 UNLOCKED!</p>
                   ) : (
                     <p className="text-xs text-gray-700 font-semibold">
-                      🔒 {getUnlockedPhraseIds(totalPoints).length}/21 phrases unlocked
+                      🔒 {getUnlockedPhraseIds(totalPoints).length}/27 phrases unlocked
                     </p>
                   )}
                 </div>
