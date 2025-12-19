@@ -2701,24 +2701,24 @@ const ZikrGame = () => {
               <div className="grid grid-cols-3 gap-4">
                 <button
                   onClick={() => setScreen('leaderboard')}
-                  className="bg-gradient-to-br from-[#fb923c] to-[#f59e0b] text-white py-4 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
+                  className="bg-gradient-to-br from-[#fb923c] to-[#f59e0b] text-white py-4 px-2 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
                 >
                   <Crown size={28} />
-                  <span className="text-base">Leaderboard</span>
+                  <span className="text-sm leading-tight">Leaderboard</span>
                 </button>
                 <button
                   onClick={() => setScreen('achievements')}
-                  className="bg-gradient-to-br from-[#a855f7] to-[#7c3aed] text-white py-4 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
+                  className="bg-gradient-to-br from-[#a855f7] to-[#7c3aed] text-white py-4 px-2 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
                 >
                   <Medal size={28} />
-                  <span className="text-base">Achievements</span>
+                  <span className="text-sm leading-tight">Achievements</span>
                 </button>
                 <button
                   onClick={() => setScreen('calendar')}
-                  className="bg-gradient-to-br from-[#10b981] to-[#059669] text-white py-4 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
+                  className="bg-gradient-to-br from-[#10b981] to-[#059669] text-white py-4 px-2 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
                 >
                   <Calendar size={28} />
-                  <span className="text-base">Calendar</span>
+                  <span className="text-sm leading-tight">Calendar</span>
                 </button>
               </div>
             </div>
@@ -3053,12 +3053,6 @@ const ZikrGame = () => {
                     <div className="text-gray-600 text-sm">session pts</div>
                   </div>
                   <div className="h-8 w-px bg-gray-300"></div>
-                  <div className="flex items-center gap-2">
-                    <Trophy className="text-purple-500" size={20} />
-                    <div className="text-lg font-bold text-purple-600">{totalPoints}</div>
-                    <div className="text-gray-600 text-sm">total</div>
-                  </div>
-                  <div className="h-8 w-px bg-gray-300"></div>
                   {/* Audio Control for Focus Mode */}
                   <button
                     onClick={toggleAudioMute}
@@ -3075,12 +3069,21 @@ const ZikrGame = () => {
                       </svg>
                     )}
                   </button>
+                  <div className="h-8 w-px bg-gray-300"></div>
+                  {/* Pause Button for Focus Mode */}
+                  <button
+                    onClick={togglePause}
+                    className="p-2 bg-emerald-500 text-white rounded-full hover:bg-emerald-600 transition-all shadow-lg"
+                    title={isPaused ? "Resume" : "Pause"}
+                  >
+                    {isPaused ? <Play size={24} /> : <Pause size={24} />}
+                  </button>
                 </>
               )}
               
               {gameMode === 'asma' && (
                 <>
-                  {/* Next Unlocking Name Preview */}
+                  {/* Compact Next Unlock Info */}
                   {(() => {
                     const currentUnlocked = getUnlockedAsmaIds(asmaTotalTaps).length;
                     const nextUnlockAt = (currentUnlocked + 1) * 33;
@@ -3088,84 +3091,59 @@ const ZikrGame = () => {
                     const nextName = currentUnlocked < 99 ? NAMES_OF_ALLAH[currentUnlocked] : null;
                     
                     return nextName && tapsRemaining > 0 ? (
-                      <div className="flex items-center gap-2 bg-purple-50 px-3 py-2 rounded-xl border border-purple-200">
-                        <div className="text-xs text-purple-600 font-semibold">Next:</div>
-                        <div className="text-right">
-                          <div className="text-sm font-bold text-purple-900">{nextName.arabic}</div>
-                          <div className="text-xs text-purple-600">{nextName.transliteration}</div>
-                        </div>
-                        <div className="ml-2 text-xs text-purple-500 font-medium">
-                          {tapsRemaining} {tapsRemaining === 1 ? 'tap' : 'taps'}
-                        </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-purple-600 font-semibold">Next: {nextName.transliteration}</span>
+                        <span className="text-purple-500">({tapsRemaining})</span>
                       </div>
-                    ) : null;
+                    ) : (
+                      <div className="text-sm text-purple-600 font-semibold">All names unlocked! 🎉</div>
+                    );
                   })()}
-                  {(() => {
-                    const nextName = getUnlockedAsmaIds(asmaTotalTaps).length < 99 ? NAMES_OF_ALLAH[getUnlockedAsmaIds(asmaTotalTaps).length] : null;
-                    return nextName ? <div className="h-8 w-px bg-gray-300"></div> : null;
-                  })()}
+                  <div className="h-8 w-px bg-gray-300"></div>
                   <div className="flex items-center gap-2">
-                    <div className="text-2xl font-bold text-purple-600">{asmaTotalTaps}</div>
-                    <div className="text-gray-600 text-sm">total taps</div>
+                    <div className="text-lg font-bold text-purple-600">{asmaTotalTaps}</div>
+                    <div className="text-gray-600 text-sm">taps</div>
                   </div>
                   <div className="h-8 w-px bg-gray-300"></div>
                   <div className="flex items-center gap-2">
-                    <Star className="text-purple-500 fill-purple-500" size={20} />
+                    <Star className="text-purple-500 fill-purple-500" size={18} />
                     <div className="text-lg font-bold text-purple-600">{getUnlockedAsmaIds(asmaTotalTaps).length}/99</div>
-                    <div className="text-gray-600 text-sm">names</div>
                   </div>
+                  <div className="h-8 w-px bg-gray-300"></div>
+                  {/* Pause Button for Asma Mode */}
+                  <button
+                    onClick={togglePause}
+                    className="p-2 bg-purple-500 text-white rounded-full hover:bg-purple-600 transition-all shadow-lg"
+                    title={isPaused ? "Resume" : "Pause"}
+                  >
+                    {isPaused ? <Play size={24} /> : <Pause size={24} />}
+                  </button>
                 </>
               )}
               
               {gameMode === 'tasbih' && (
                 <>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <div className="text-2xl font-bold text-blue-600">{tasbihCurrentCount}</div>
-                    <div className="text-gray-600 text-sm">current</div>
+                    <span className="text-gray-400 font-bold text-xl">/</span>
+                    <div className="text-2xl font-bold text-gray-600">{tasbihTargetCount}</div>
+                    <div className="ml-2 text-sm text-blue-600 font-semibold">
+                      ({Math.round((tasbihCurrentCount / tasbihTargetCount) * 100)}%)
+                    </div>
                   </div>
                   <div className="h-8 w-px bg-gray-300"></div>
-                  <div className="flex items-center gap-2">
-                    <Target className="text-blue-500" size={20} />
-                    <div className="text-lg font-bold text-blue-600">{tasbihTargetCount}</div>
-                    <div className="text-gray-600 text-sm">target</div>
-                  </div>
+                  {/* Pause Button for Tasbih Mode */}
+                  <button
+                    onClick={togglePause}
+                    className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all shadow-lg"
+                    title={isPaused ? "Resume" : "Pause"}
+                  >
+                    {isPaused ? <Play size={24} /> : <Pause size={24} />}
+                  </button>
                 </>
               )}
               
-              <div className="h-8 w-px bg-gray-300"></div>
-              <div className={`flex items-center gap-2 bg-${currentMode.color}-50 px-3 py-1 rounded-full`}>
-                <ModeIcon className={`text-${currentMode.color}-600`} size={16} />
-                <div className={`text-sm font-semibold text-${currentMode.color}-700`}>{currentMode.name}</div>
-              </div>
             </div>
-            
-            {/* Tapped vs Total counter - or Tasbih Progress */}
-            {gameMode === 'tasbih' ? (
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-2 rounded-full border-2 border-blue-300">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold text-blue-700">{tasbihCurrentCount}</span>
-                  <span className="text-gray-500 font-semibold">/</span>
-                  <span className="text-2xl font-bold text-gray-600">{tasbihTargetCount}</span>
-                </div>
-                <div className="text-xs text-center text-blue-600 font-semibold mt-1">
-                  {Math.round((tasbihCurrentCount / tasbihTargetCount) * 100)}% Complete
-                </div>
-              </div>
-            ) : gameMode === 'asma' ? (
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-2 rounded-full border-2 border-purple-300">
-                <div className="text-center">
-                  <div className="text-xs text-purple-600 font-semibold">Next unlock</div>
-                  <div className="text-lg font-bold text-purple-700">{Math.ceil(asmaTotalTaps / 33) * 33} taps</div>
-                </div>
-              </div>
-            ) : null}
-
-            <button
-              onClick={togglePause}
-              className="p-2 bg-emerald-500 text-white rounded-full hover:bg-emerald-600 transition-colors"
-            >
-              {isPaused ? <Play size={24} /> : <Pause size={24} />}
-            </button>
           </div>
         </div>
         
