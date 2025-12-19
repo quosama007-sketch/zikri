@@ -654,6 +654,7 @@ const ZikrGame = () => {
   // Dynamic Background & Audio System (Focus Mode)
   const [currentBackgroundIndex, setCurrentBackgroundIndex] = useState(1);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
+  const [phraseSpeed, setPhraseSpeed] = useState(2); // 1=Slow, 2=Medium, 3=Fast
   const [isAudioLoaded, setIsAudioLoaded] = useState(false);
   const audioRef = useRef(null);
   const nextAudioRef = useRef(null); // For preloading
@@ -2453,7 +2454,7 @@ const ZikrGame = () => {
             
             {/* Quick select buttons */}
             <div className="grid grid-cols-5 gap-3">
-              {[33, 99, 100, 500, 1000].map(count => (
+              {[10, 33, 100, 500, 1000].map(count => (
                 <button
                   key={count}
                   onClick={() => setTasbihTargetCount(count)}
@@ -2679,7 +2680,7 @@ const ZikrGame = () => {
             </div>
 
             <div className="space-y-4">
-              {/* Start Game Button */}
+              {/* Start Game Button - Full Width */}
               <button
                 onClick={() => setScreen('mode-select')}
                 className="w-full bg-gradient-to-r from-[#1e3a8a] to-[#4f46e5] text-white py-4 rounded-xl font-semibold text-lg hover:shadow-lg transform hover:scale-105 transition-all"
@@ -2687,28 +2688,39 @@ const ZikrGame = () => {
                 Start Game
               </button>
               
-              {/* Grid of 3 buttons: Leaderboard, Achievements, Calendar */}
-              <div className="grid grid-cols-3 gap-4">
+              {/* Row 1: Leaderboard & Achievements */}
+              <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setScreen('leaderboard')}
-                  className="bg-gradient-to-br from-[#fb923c] to-[#f59e0b] text-white py-4 px-2 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
+                  className="bg-gradient-to-br from-[#fb923c] to-[#f59e0b] text-white py-4 px-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
                 >
                   <Crown size={28} />
                   <span className="text-sm leading-tight">Leaderboard</span>
                 </button>
                 <button
                   onClick={() => setScreen('achievements')}
-                  className="bg-gradient-to-br from-[#a855f7] to-[#7c3aed] text-white py-4 px-2 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
+                  className="bg-gradient-to-br from-[#a855f7] to-[#7c3aed] text-white py-4 px-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
                 >
                   <Medal size={28} />
                   <span className="text-sm leading-tight">Achievements</span>
                 </button>
+              </div>
+              
+              {/* Row 2: Calendar & My Profile */}
+              <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setScreen('calendar')}
-                  className="bg-gradient-to-br from-[#10b981] to-[#059669] text-white py-4 px-2 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
+                  className="bg-gradient-to-br from-[#10b981] to-[#059669] text-white py-4 px-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
                 >
                   <Calendar size={28} />
                   <span className="text-sm leading-tight">Calendar</span>
+                </button>
+                <button
+                  onClick={() => setScreen('my-profile')}
+                  className="bg-gradient-to-br from-[#3b82f6] to-[#1d4ed8] text-white py-4 px-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex flex-col items-center justify-center gap-2"
+                >
+                  <User size={28} />
+                  <span className="text-sm leading-tight">My Profile</span>
                 </button>
               </div>
             </div>
@@ -2963,6 +2975,163 @@ const ZikrGame = () => {
                 <p className="text-sm text-gray-600 mb-1">Total Time</p>
                 <p className="text-2xl font-bold text-blue-600">{Math.floor(totals.totalTime / 60)}m</p>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // My Profile screen
+  if (screen === 'my-profile') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <User className="text-[#3b82f6]" size={32} />
+                <div>
+                  <h2 className="text-2xl font-bold text-[#0f172a]">My Profile</h2>
+                  <p className="text-sm text-[#64748b]">Customize your experience</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setScreen('menu')}
+                className="text-[#4f46e5] font-semibold hover:underline"
+              >
+                Back
+              </button>
+            </div>
+          </div>
+
+          {/* User Info */}
+          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
+            <h3 className="text-xl font-bold text-[#0f172a] mb-4">User Information</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Display Name</label>
+                <input
+                  type="text"
+                  value={currentUser?.displayName || 'Zakir'}
+                  readOnly
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 font-medium"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-4 rounded-xl border border-emerald-200">
+                  <p className="text-sm text-emerald-600 mb-1">Total Points</p>
+                  <p className="text-2xl font-bold text-emerald-700">{totalPoints.toLocaleString()}</p>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
+                  <p className="text-sm text-purple-600 mb-1">Current Streak</p>
+                  <p className="text-2xl font-bold text-purple-700">{currentUser?.currentStreak || 0} days</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Preferences */}
+          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
+            <h3 className="text-xl font-bold text-[#0f172a] mb-4 flex items-center gap-2">
+              <Zap className="text-blue-500" size={24} />
+              Preferences
+            </h3>
+            
+            <div className="space-y-6">
+              {/* Sound Toggle */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-gray-800">Sound Effects</p>
+                  <p className="text-sm text-gray-600">Enable tap sounds and audio feedback</p>
+                </div>
+                <button
+                  onClick={() => setIsAudioMuted(!isAudioMuted)}
+                  className={`relative w-16 h-8 rounded-full transition-colors ${
+                    !isAudioMuted ? 'bg-emerald-500' : 'bg-gray-300'
+                  }`}
+                >
+                  <div
+                    className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
+                      !isAudioMuted ? 'transform translate-x-8' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Speed Control */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="font-semibold text-gray-800">Zikr Speed</p>
+                    <p className="text-sm text-gray-600">Adjust phrase movement speed</p>
+                  </div>
+                  <span className="text-sm font-bold text-blue-600">
+                    {phraseSpeed === 1 ? 'Slow' : phraseSpeed === 2 ? 'Medium' : 'Fast'}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  {[1, 2, 3].map((speed) => (
+                    <button
+                      key={speed}
+                      onClick={() => setPhraseSpeed(speed)}
+                      className={`flex-1 py-2 rounded-lg font-semibold transition-all ${
+                        phraseSpeed === speed
+                          ? 'bg-blue-500 text-white shadow-lg'
+                          : 'bg-gray-100 text-gray-700 hover:bg-blue-100'
+                      }`}
+                    >
+                      {speed === 1 ? 'Slow' : speed === 2 ? 'Medium' : 'Fast'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Share & Actions */}
+          <div className="bg-white rounded-3xl shadow-lg p-6 border border-[#cbd5e1]">
+            <h3 className="text-xl font-bold text-[#0f172a] mb-4 flex items-center gap-2">
+              <Sparkles className="text-purple-500" size={24} />
+              Share & More
+            </h3>
+            
+            <div className="space-y-3">
+              {/* Share Score */}
+              <button
+                onClick={() => {
+                  const shareText = `🕌 I've earned ${totalPoints.toLocaleString()} points on Zikri!\\n📿 Current streak: ${currentUser?.currentStreak || 0} days\\n\\nJoin me in remembering Allah! 🌟`;
+                  if (navigator.share) {
+                    navigator.share({
+                      title: 'My Zikri Progress',
+                      text: shareText
+                    }).catch(() => {});
+                  } else {
+                    navigator.clipboard.writeText(shareText);
+                    alert('Score copied to clipboard! 📋');
+                  }
+                }}
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                <Sparkles size={20} />
+                Share My Progress
+              </button>
+
+              {/* Sign Out */}
+              <button
+                onClick={async () => {
+                  if (confirm('Are you sure you want to sign out?')) {
+                    await logoutUser();
+                    setCurrentUser(null);
+                    setScreen('auth');
+                  }
+                }}
+                className="w-full bg-gradient-to-r from-gray-500 to-gray-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                <LogOut size={20} />
+                Sign Out
+              </button>
             </div>
           </div>
         </div>
