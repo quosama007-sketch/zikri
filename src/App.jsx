@@ -700,6 +700,10 @@ const ZikrGame = () => {
   const [showFreezeCalendar, setShowFreezeCalendar] = useState(false);
   const [selectedFreezeDates, setSelectedFreezeDates] = useState([]);
   
+  // Achievement Notification System
+  const [showAchievementUnlocked, setShowAchievementUnlocked] = useState(false);
+  const [unlockedAchievementIds, setUnlockedAchievementIds] = useState([]);
+  
   // Calendar Activity Tracker
   const [calendarMetric, setCalendarMetric] = useState('taps'); // 'taps', 'points', 'time'
   const [calendarView, setCalendarView] = useState('week'); // 'day', 'week', 'month', 'year'
@@ -1132,6 +1136,17 @@ const ZikrGame = () => {
         }
       }
     });
+    
+    // Check if new achievements were unlocked this session
+    const newlyUnlockedIds = newAchievements.filter(id => !currentAchievements.includes(id));
+    if (newlyUnlockedIds.length > 0) {
+      console.log(`[ACHIEVEMENTS] ${newlyUnlockedIds.length} new achievement(s) unlocked!`);
+      // Show achievement notification after a delay
+      setTimeout(() => {
+        setUnlockedAchievementIds(newlyUnlockedIds);
+        setShowAchievementUnlocked(true);
+      }, 1500); // Show after 1.5 seconds
+    }
     
     // Prepare data for Firebase
     const progressData = {
@@ -2111,30 +2126,40 @@ const ZikrGame = () => {
         // Check for missed phrases
         const missed = updated.filter(p => p.position > 110);
         if (missed.length > 0) {
-          // Smart miss sound: Only play on 1st and 3rd miss
-          setConsecutiveMisses(prevMisses => {
-            const newMisses = prevMisses + missed.length;
-            
-            // Play miss sound only on 1st and 3rd miss
-            if (prevMisses === 0 || (prevMisses < 3 && newMisses >= 3)) {
-              missed.forEach(() => playSound('phraseMiss'));
-            }
-            
-            return newMisses;
-          });
-          
-          // Track misses and end game based on mode
+          // Handle misses: smart sound + game ending logic
           setConsecutiveMisses(prevMisses => {
             const newMisses = prevMisses + missed.length;
             
             console.log(`[MISS CHECK] Mode: ${gameModeRef.current}, Consecutive misses: ${prevMisses} → ${newMisses}`);
             
+            // Smart miss sound: Mode-specific
+            const currentMode = gameModeRef.current;
+            let shouldPlaySound = false;
+            
+            if (currentMode === 'tasbih') {
+              // Tasbih: Sound on 4th and 7th miss only
+              if ((prevMisses < 4 && newMisses >= 4) || (prevMisses < 7 && newMisses >= 7)) {
+                shouldPlaySound = true;
+              }
+            } else {
+              // Focus & Asma: Sound on 3rd miss only
+              if (prevMisses < 3 && newMisses >= 3) {
+                shouldPlaySound = true;
+              }
+            }
+            
+            if (shouldPlaySound) {
+              missed.forEach(() => playSound('phraseMiss'));
+              console.log(`[SOUND] Playing miss sound (${currentMode} mode, miss #${newMisses})`);
+            }
+            
+            // Game ending logic based on mode
             // Tasbih Mode: 10 consecutive misses
             if (gameModeRef.current === 'tasbih' && newMisses >= 10) {
               console.log(`[GAME END] Tasbih: 10 consecutive misses reached! Ending game...`);
               setTimeout(() => endGame(), 100);
             }
-            // Focus & Asma Modes: 5 consecutive misses (keep existing behavior)
+            // Focus & Asma Modes: 5 consecutive misses
             else if (gameModeRef.current !== 'tasbih' && newMisses >= 5) {
               console.log(`[GAME END] ${gameModeRef.current}: 5 consecutive misses reached! Ending game...`);
               setTimeout(() => endGame(), 100);
@@ -3891,21 +3916,26 @@ const ZikrGame = () => {
               Unlocked Phrases ({unlockedPhrases.length})
             </h3>
             <div className="space-y-3">
-              {unlockedPhrases.map(phrase => (
-                <div key={phrase.id} className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] rounded-xl p-4 border-2 border-[#4f46e5]">
-                  <p className="text-2xl font-bold text-[#0f172a] mb-2" style={{ fontFamily: 'Arial' }}>
-                    {phrase.arabic}
-                  </p>
-                  <p className="text-sm font-semibold text-[#4f46e5] mb-1">{phrase.transliteration}</p>
-                  <p className="text-sm text-[#64748b] mb-2">{phrase.translation}</p>
-                  <p className="text-xs text-[#94a3b8] italic">{phrase.category}</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="bg-[#4f46e5] text-white text-xs px-2 py-1 rounded-full font-semibold">
-                      +{phrase.points} pts
-                    </span>
+              {unlockedPhrases.map(phrase => {
+                const phraseCount = (currentUser?.phraseCounts || {})[phrase.id] || 0;
+                return (
+                  <div key={phrase.id} className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] rounded-xl p-4 border-2 border-[#4f46e5]">
+                    <p className="text-2xl font-bold text-[#0f172a] mb-2" style={{ fontFamily: 'Arial' }}>
+                      {phrase.arabic}
+                    </p>
+                    <p className="text-sm font-semibold text-[#4f46e5] mb-1">{phrase.transliteration}</p>
+                    <p className="text-sm text-[#64748b] mb-2">{phrase.translation}</p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="bg-[#4f46e5] text-white text-xs px-2 py-1 rounded-full font-semibold">
+                        +{phrase.points} pts
+                      </span>
+                      <span className="text-sm font-bold text-[#10b981] bg-[#d1fae5] px-3 py-1 rounded-full">
+                        {phraseCount.toLocaleString()} times
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -4215,21 +4245,26 @@ const ZikrGame = () => {
               Unlocked Phrases ({unlockedPhrases.length})
             </h3>
             <div className="space-y-3">
-              {unlockedPhrases.map(phrase => (
-                <div key={phrase.id} className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] rounded-xl p-4 border-2 border-[#4f46e5]">
-                  <p className="text-2xl font-bold text-[#0f172a] mb-2" style={{ fontFamily: 'Arial' }}>
-                    {phrase.arabic}
-                  </p>
-                  <p className="text-sm font-semibold text-[#4f46e5] mb-1">{phrase.transliteration}</p>
-                  <p className="text-sm text-[#64748b] mb-2">{phrase.translation}</p>
-                  <p className="text-xs text-[#94a3b8] italic">{phrase.category}</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="bg-[#4f46e5] text-white text-xs px-2 py-1 rounded-full font-semibold">
-                      +{phrase.points} pts
-                    </span>
+              {unlockedPhrases.map(phrase => {
+                const phraseCount = (currentUser?.phraseCounts || {})[phrase.id] || 0;
+                return (
+                  <div key={phrase.id} className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] rounded-xl p-4 border-2 border-[#4f46e5]">
+                    <p className="text-2xl font-bold text-[#0f172a] mb-2" style={{ fontFamily: 'Arial' }}>
+                      {phrase.arabic}
+                    </p>
+                    <p className="text-sm font-semibold text-[#4f46e5] mb-1">{phrase.transliteration}</p>
+                    <p className="text-sm text-[#64748b] mb-2">{phrase.translation}</p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="bg-[#4f46e5] text-white text-xs px-2 py-1 rounded-full font-semibold">
+                        +{phrase.points} pts
+                      </span>
+                      <span className="text-sm font-bold text-[#10b981] bg-[#d1fae5] px-3 py-1 rounded-full">
+                        {phraseCount.toLocaleString()} times
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -4306,6 +4341,48 @@ const ZikrGame = () => {
                   className="bg-blue-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
                 >
                   Got it
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Achievement Unlocked Celebration Modal */}
+        {showAchievementUnlocked && unlockedAchievementIds.length > 0 && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[10000]" onClick={() => setShowAchievementUnlocked(false)}>
+            <div className="bg-gradient-to-br from-[#1e1b4b] via-[#312e81] to-[#4c1d95] rounded-3xl p-8 max-w-md mx-4 shadow-2xl border-4 border-yellow-400" onClick={(e) => e.stopPropagation()}>
+              <div className="text-center">
+                {/* Celebration Icon */}
+                <div className="text-6xl mb-4 animate-bounce">🎉</div>
+                
+                {/* Title */}
+                <h2 className="text-3xl font-bold text-yellow-300 mb-6">
+                  Achievement{unlockedAchievementIds.length > 1 ? 's' : ''} Unlocked!
+                </h2>
+                
+                {/* Achievement Details */}
+                <div className="space-y-4 mb-6">
+                  {unlockedAchievementIds.map(achievementId => {
+                    const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
+                    if (!achievement) return null;
+                    
+                    return (
+                      <div key={achievementId} className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border-2 border-yellow-400/50">
+                        <div className="text-5xl mb-2">{achievement.icon}</div>
+                        <h3 className="text-xl font-bold text-yellow-200 mb-1">{achievement.name}</h3>
+                        <p className="text-sm text-purple-200 mb-2">{achievement.nameEn}</p>
+                        <p className="text-sm text-gray-300">{achievement.description}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* Continue Button */}
+                <button
+                  onClick={() => setShowAchievementUnlocked(false)}
+                  className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-purple-900 px-8 py-3 rounded-xl font-bold text-lg hover:from-yellow-300 hover:to-yellow-400 transition-all transform hover:scale-105 shadow-lg"
+                >
+                  Amazing! 🌟
                 </button>
               </div>
             </div>
