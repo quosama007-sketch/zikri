@@ -731,6 +731,11 @@ const ZikrGame = () => {
           setTotalPoints(result.data.totalPoints || 0);
           setAsmaTotalTaps(result.data.asmaTotalTaps || 0); // Load Asma taps
           setTasbihTotalCounts(result.data.tasbihTotalCounts || {}); // Load Tasbih counts
+          // Load profile preferences
+          setProfileAvatar(result.data.profileAvatar || 'dove'); // Default to dove
+          setPhraseSpeed(result.data.phraseSpeed || 2); // Default to Medium
+          setUserGender(result.data.userGender || ''); // Default to empty
+          setLeaderboardVisible(result.data.leaderboardVisible !== undefined ? result.data.leaderboardVisible : true); // Default to visible
           setShowAuth(false);
         }
       } else {
@@ -743,6 +748,30 @@ const ZikrGame = () => {
     
     return () => unsubscribe();
   }, []);
+
+  // Save profile preferences whenever they change
+  useEffect(() => {
+    const saveProfilePreferences = async () => {
+      if (!currentUser || !currentUser.userId) return;
+      
+      const preferences = {
+        profileAvatar,
+        phraseSpeed,
+        userGender,
+        leaderboardVisible
+      };
+      
+      const result = await saveGameProgress(currentUser.userId, preferences);
+      if (result.success) {
+        console.log('✅ Profile preferences saved');
+      }
+    };
+    
+    // Only save if user is authenticated (avoid saving on initial load)
+    if (currentUser && currentUser.userId) {
+      saveProfilePreferences();
+    }
+  }, [profileAvatar, phraseSpeed, userGender, leaderboardVisible]);
 
   // Sync totalPoints when currentUser updates
   useEffect(() => {
@@ -1118,7 +1147,12 @@ const ZikrGame = () => {
       lastPointsResetDate: currentUser.lastPointsResetDate || new Date().toISOString().split('T')[0],
       asmaTotalTaps: asmaTotalTaps, // Save Asma tap count
       tasbihTotalCounts: tasbihTotalCounts, // Save Tasbih total counts
-      activeFreezes: currentUser.activeFreezes || [] // Save active freeze dates
+      activeFreezes: currentUser.activeFreezes || [], // Save active freeze dates
+      // Profile preferences
+      profileAvatar: profileAvatar, // Save selected avatar
+      phraseSpeed: phraseSpeed, // Save speed preference
+      userGender: userGender, // Save gender
+      leaderboardVisible: leaderboardVisible // Save leaderboard visibility
     };
     
     // Update daily stats for calendar tracker
@@ -1246,7 +1280,7 @@ const ZikrGame = () => {
     setCurrentBackgroundIndex(newIndex);
     
     // Load and fade in new audio
-    if (!isAudioMuted && gameMode === 'focus' && screen === 'game') {
+    if (!isAudioMuted && soundsEnabled && gameMode === 'focus' && screen === 'game') {
       const newAudio = new Audio(`/assets/audio/${newIndex}.mp3`);
       newAudio.loop = true;
       newAudio.volume = 0;
@@ -1279,7 +1313,7 @@ const ZikrGame = () => {
   
   // Initialize audio when game starts (Focus Mode)
   useEffect(() => {
-    if (gameMode === 'focus' && screen === 'game' && !isAudioMuted) {
+    if (gameMode === 'focus' && screen === 'game' && !isAudioMuted && soundsEnabled) {
       const initAudio = async () => {
         // Start with background 1 audio
         const audio = new Audio('/assets/audio/1.mp3');
@@ -1399,8 +1433,16 @@ const ZikrGame = () => {
   
   // Toggle sound effects on/off
   const toggleSounds = () => {
-    setSoundsEnabled(!soundsEnabled);
-    console.log(`[SOUNDS] Sound effects ${!soundsEnabled ? 'enabled' : 'disabled'}`);
+    const newState = !soundsEnabled;
+    setSoundsEnabled(newState);
+    console.log(`[SOUNDS] Sound effects ${newState ? 'enabled' : 'disabled'}`);
+    
+    // Also stop background audio when sounds are disabled
+    if (!newState && audioRef.current) {
+      audioRef.current.pause();
+    } else if (newState && audioRef.current && gameMode === 'focus' && screen === 'game' && !isPaused) {
+      audioRef.current.play().catch(err => console.log('[AUDIO] Play prevented:', err));
+    }
   };
   
   // ===== END SOUND EFFECTS SYSTEM =====
@@ -2069,25 +2111,40 @@ const ZikrGame = () => {
         // Check for missed phrases
         const missed = updated.filter(p => p.position > 110);
         if (missed.length > 0) {
-          // Play miss sound for each missed phrase
-          missed.forEach(() => playSound('phraseMiss'));
-          
-          // In Tasbih mode, misses don't end the game - only reaching target count ends it
-          // CRITICAL: Use gameModeRef.current to avoid stale closure in setInterval
-          if (gameModeRef.current !== 'tasbih') {
-            setConsecutiveMisses(prevMisses => {
-              const newMisses = prevMisses + missed.length;
-              
-              console.log(`[MISS CHECK] Consecutive misses: ${prevMisses} → ${newMisses}`);
-              
-              if (newMisses >= 5) {
-                console.log(`[GAME END] 5 consecutive misses reached! Ending game...`);
-                setTimeout(() => endGame(), 100);
-              }
-              
-              return newMisses;
-            });
+          // Smart miss sound: Only play on 1st and 3rd miss
+          setConsecutiveMisses(prevMisses => {
+            const newMisses = prevMisses + missed.length;
             
+            // Play miss sound only on 1st and 3rd miss
+            if (prevMisses === 0 || (prevMisses < 3 && newMisses >= 3)) {
+              missed.forEach(() => playSound('phraseMiss'));
+            }
+            
+            return newMisses;
+          });
+          
+          // Track misses and end game based on mode
+          setConsecutiveMisses(prevMisses => {
+            const newMisses = prevMisses + missed.length;
+            
+            console.log(`[MISS CHECK] Mode: ${gameModeRef.current}, Consecutive misses: ${prevMisses} → ${newMisses}`);
+            
+            // Tasbih Mode: 10 consecutive misses
+            if (gameModeRef.current === 'tasbih' && newMisses >= 10) {
+              console.log(`[GAME END] Tasbih: 10 consecutive misses reached! Ending game...`);
+              setTimeout(() => endGame(), 100);
+            }
+            // Focus & Asma Modes: 5 consecutive misses (keep existing behavior)
+            else if (gameModeRef.current !== 'tasbih' && newMisses >= 5) {
+              console.log(`[GAME END] ${gameModeRef.current}: 5 consecutive misses reached! Ending game...`);
+              setTimeout(() => endGame(), 100);
+            }
+            
+            return newMisses;
+          });
+          
+          // Update lives (only for non-Tasbih modes)
+          if (gameModeRef.current !== 'tasbih') {
             setLives(prevLives => Math.max(0, prevLives - missed.length));
           }
           
@@ -3114,14 +3171,14 @@ const ZikrGame = () => {
                   <p className="text-sm text-gray-600">Enable tap sounds and audio feedback</p>
                 </div>
                 <button
-                  onClick={() => setIsAudioMuted(!isAudioMuted)}
+                  onClick={toggleSounds}
                   className={`relative w-16 h-8 rounded-full transition-colors ${
-                    !isAudioMuted ? 'bg-emerald-500' : 'bg-gray-300'
+                    soundsEnabled ? 'bg-emerald-500' : 'bg-gray-300'
                   }`}
                 >
                   <div
                     className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
-                      !isAudioMuted ? 'transform translate-x-8' : ''
+                      soundsEnabled ? 'transform translate-x-8' : ''
                     }`}
                   />
                 </button>
