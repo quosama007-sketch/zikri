@@ -745,6 +745,13 @@ const ZikrGame = () => {
           setUserGender(result.data.userGender || ''); // Default to empty
           setLeaderboardVisible(result.data.leaderboardVisible !== undefined ? result.data.leaderboardVisible : true); // Default to visible
           setShowAuth(false);
+          
+          // Update daily streak after user data is loaded
+          // Small delay to ensure state is updated
+          setTimeout(() => {
+            console.log('[APP LOAD] Updating daily streak after user login');
+            updateDailyStreak();
+          }, 100);
         }
       } else {
         // User is signed out
@@ -756,14 +763,6 @@ const ZikrGame = () => {
     
     return () => unsubscribe();
   }, []);
-
-  // Update daily streak when user logs in or app loads
-  useEffect(() => {
-    if (currentUser && currentUser.userId) {
-      console.log('[APP LOAD] Updating daily streak for logged-in user');
-      updateDailyStreak();
-    }
-  }, [currentUser?.userId]); // Run when user ID is available (on login or app reload)
 
   // Save profile preferences whenever they change
   useEffect(() => {
@@ -913,7 +912,14 @@ const ZikrGame = () => {
   
   // Update daily streak (called when game starts)
   const updateDailyStreak = async () => {
-    if (!currentUser || !currentUser.userId) return;
+    console.log('[STREAK UPDATE] Function called. Current user:', currentUser ? 'exists' : 'null');
+    if (!currentUser || !currentUser.userId) {
+      console.log('[STREAK UPDATE] No current user, returning early');
+      return;
+    }
+    
+    console.log('[STREAK UPDATE] Current streak:', currentUser.currentStreak);
+    console.log('[STREAK UPDATE] Last played:', currentUser.lastPlayedDate);
     
     const now = new Date();
     const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Today at midnight
@@ -923,6 +929,9 @@ const ZikrGame = () => {
     
     let newStreak = currentUser.currentStreak || 0;
     let newLongestStreak = currentUser.longestStreak || 0;
+    
+    console.log('[STREAK UPDATE] Today:', todayDate.toISOString());
+    console.log('[STREAK UPDATE] Last played date:', lastPlayedDate ? lastPlayedDate.toISOString() : 'never');
     
     if (!lastPlayedDate) {
       // First time playing ever
@@ -1035,12 +1044,15 @@ const ZikrGame = () => {
       });
       
       // Update local state
-      setCurrentUser(prev => ({
-        ...prev,
-        currentStreak: newStreak,
-        longestStreak: newLongestStreak,
-        lastPlayedDate: now.toISOString()
-      }));
+      setCurrentUser(prev => {
+        console.log('[STREAK] Updating local state - old streak:', prev.currentStreak, '→ new:', newStreak);
+        return {
+          ...prev,
+          currentStreak: newStreak,
+          longestStreak: newLongestStreak,
+          lastPlayedDate: now.toISOString()
+        };
+      });
       
       console.log('[STREAK] Updated in database:', { newStreak, newLongestStreak });
     } catch (error) {
@@ -1161,14 +1173,15 @@ const ZikrGame = () => {
     }
     
     // Prepare data for Firebase
+    // NOTE: currentStreak and longestStreak are handled separately by updateDailyStreak()
+    // Do NOT include them here to avoid race conditions and overwrites!
     const progressData = {
       totalPoints: points, // Single field, cumulative, never decreases
       unlockedPhrases: getUnlockedPhraseIds(points),
       totalZikrTime: newTotalTime,
       achievements: newAchievements,
       sessionsCompleted: newSessionsCompleted,
-      currentStreak: newStreak, // Already updated by updateDailyStreak()
-      longestStreak: newLongestStreak, // Already updated by updateDailyStreak()
+      // currentStreak and longestStreak removed - handled by updateDailyStreak()
       phraseCounts: currentUser.phraseCounts || {},
       dailyPoints: currentUser.dailyPoints || 0,
       lastPointsResetDate: currentUser.lastPointsResetDate || new Date().toISOString().split('T')[0],
