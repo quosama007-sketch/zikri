@@ -324,4 +324,3 @@ export const getNotificationPermission = () => {
   if (!isNotificationSupported()) return 'unsupported';
   return Notification.permission; // 'granted', 'denied', or 'default'
 };
-
