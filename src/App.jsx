@@ -650,6 +650,10 @@ const ZikrGame = () => {
     duration: 0
   });
   
+  // Session tracking for stats
+  const [sessionStartAsmaCount, setSessionStartAsmaCount] = useState(0); // Track Asma names at session start
+  const [tasbihCompleted, setTasbihCompleted] = useState(false); // Track if Tasbih goal was reached
+  
   // Tasbih Mode specific state (formerly Tasbih)
   const [tasbihSelectedPhrase, setTasbihSelectedPhrase] = useState(null);
   const [tasbihTargetCount, setTasbihTargetCount] = useState(100);
@@ -1772,6 +1776,16 @@ const ZikrGame = () => {
       setSessionStats({ totalTaps: 0, missedPhrases: 0, accuracy: 0, duration: 0 });
       nextPhraseIdRef.current = 0;
       
+      // Track session start stats for accurate reporting
+      if (mode === 'asma') {
+        setSessionStartAsmaCount(getUnlockedAsmaIds(asmaTotalTaps).length);
+        console.log(`[SESSION START] Asma names at start: ${getUnlockedAsmaIds(asmaTotalTaps).length}`);
+      }
+      if (mode === 'tasbih') {
+        setTasbihCompleted(false); // Reset completion status
+        console.log('[SESSION START] Tasbih completion status: false');
+      }
+      
       // Small delay to ensure state is set before spawning initial phrases
       setTimeout(() => {
         // Spawn 3 initial items based on mode
@@ -2357,6 +2371,9 @@ const ZikrGame = () => {
       if (newCount >= tasbihTargetCount) {
         // Goal achieved! End game
         console.log(`[TASBIH COMPLETE] Target reached! ${newCount}/${tasbihTargetCount}`);
+        
+        // Mark as completed
+        setTasbihCompleted(true);
         
         // Calculate points: phrase.points × count
         if (tasbihSelectedPhrase) {
@@ -3653,6 +3670,10 @@ const ZikrGame = () => {
       }
     } else if (gameMode === 'asma') {
       const sessionTaps = sessionStats.totalTaps;
+      // Calculate names unlocked THIS SESSION (end count - start count)
+      const namesAtSessionEnd = getUnlockedAsmaIds(asmaTotalTaps).length;
+      const namesUnlockedThisSession = namesAtSessionEnd - sessionStartAsmaCount;
+      
       if (sessionTaps >= 100) {
         congratsMessage = "Masha Allah! Beautiful! 🌟";
       } else if (sessionTaps >= 50) {
@@ -3660,10 +3681,17 @@ const ZikrGame = () => {
       } else {
         congratsMessage = "Well done! ✨";
       }
-      encouragementMessage = `${Math.floor(sessionTaps / 33)} name${Math.floor(sessionTaps / 33) !== 1 ? 's' : ''} unlocked this session!`;
+      encouragementMessage = `${namesUnlockedThisSession} name${namesUnlockedThisSession !== 1 ? 's' : ''} unlocked this session!`;
     } else if (gameMode === 'tasbih') {
-      congratsMessage = "Goal Completed! 🎯";
-      encouragementMessage = `${tasbihTargetCount} repetitions of ${tasbihSelectedPhrase?.transliteration || 'dhikr'}`;
+      if (tasbihCompleted) {
+        // Completed successfully
+        congratsMessage = "Goal Completed! 🎯";
+        encouragementMessage = `${tasbihTargetCount} repetitions of ${tasbihSelectedPhrase?.transliteration || 'dhikr'}`;
+      } else {
+        // Ended early (missed too many)
+        congratsMessage = "Better luck next time! 💪";
+        encouragementMessage = `Keep practicing! You'll complete it next time, insha'Allah`;
+      }
     }
 
     return (
@@ -3794,6 +3822,48 @@ const ZikrGame = () => {
             </button>
           </div>
         </div>
+        
+        {/* Achievement Unlocked Celebration Modal */}
+        {showAchievementUnlocked && unlockedAchievementIds.length > 0 && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[10000]" onClick={() => setShowAchievementUnlocked(false)}>
+            <div className="bg-gradient-to-br from-[#1e1b4b] via-[#312e81] to-[#4c1d95] rounded-3xl p-8 max-w-md mx-4 shadow-2xl border-4 border-yellow-400" onClick={(e) => e.stopPropagation()}>
+              <div className="text-center">
+                {/* Celebration Icon */}
+                <div className="text-6xl mb-4 animate-bounce">🎉</div>
+                
+                {/* Title */}
+                <h2 className="text-3xl font-bold text-yellow-300 mb-6">
+                  Achievement{unlockedAchievementIds.length > 1 ? 's' : ''} Unlocked!
+                </h2>
+                
+                {/* Achievement Details */}
+                <div className="space-y-4 mb-6">
+                  {unlockedAchievementIds.map(achievementId => {
+                    const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
+                    if (!achievement) return null;
+                    
+                    return (
+                      <div key={achievementId} className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border-2 border-yellow-400/50">
+                        <div className="text-5xl mb-2">{achievement.icon}</div>
+                        <h3 className="text-xl font-bold text-yellow-200 mb-1">{achievement.name}</h3>
+                        <p className="text-sm text-purple-200 mb-2">{achievement.nameEn}</p>
+                        <p className="text-sm text-gray-300">{achievement.description}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* Continue Button */}
+                <button
+                  onClick={() => setShowAchievementUnlocked(false)}
+                  className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-purple-900 px-8 py-3 rounded-xl font-bold text-lg hover:from-yellow-300 hover:to-yellow-400 transition-all transform hover:scale-105 shadow-lg"
+                >
+                  Amazing! 🌟
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
