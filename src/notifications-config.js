@@ -211,4 +211,3 @@ export const getTodaySpecialNotification = () => {
   const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
   return SPECIAL_DAY_NOTIFICATIONS.find(n => n.day === today);
 };
-
