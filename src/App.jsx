@@ -2789,14 +2789,14 @@ const ZikrGame = () => {
   // Menu screen
   if (screen === 'menu') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#e0e7ff] to-[#ffffff] p-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#e0e7ff] to-[#ffffff] dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
         <div className="max-w-2xl mx-auto">
           {/* Header */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1] dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 {/* Profile Avatar */}
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center text-3xl border-2 border-purple-300 flex-shrink-0">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900 dark:to-pink-900 rounded-full flex items-center justify-center text-3xl border-2 border-purple-300 dark:border-purple-600 flex-shrink-0">
                   {profileAvatar === 'dove' && '🕊️'}
                   {profileAvatar === 'bee' && '🐝'}
                   {profileAvatar === 'deer' && '🦌'}
@@ -2807,21 +2807,21 @@ const ZikrGame = () => {
                   {profileAvatar === 'horse' && '🐎'}
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-[#0f172a]">As-salamu alaykum, {currentUser?.username || currentUser?.displayName}!</h2>
+                  <h2 className="text-2xl font-bold text-[#0f172a] dark:text-white">As-salamu alaykum, {currentUser?.username || currentUser?.displayName}!</h2>
                   <div className="flex items-center gap-4 mt-1">
-                    <p className="text-[#64748b]">Total Points: <span className="font-bold text-[#4f46e5]">{totalPoints}</span></p>
-                    <span className="text-[#cbd5e1]">|</span>
-                    <p className="text-[#64748b]">Zikr Time: <span className="font-bold text-[#a855f7]">{Math.floor((currentUser?.totalZikrTime || 0) / 60)}m</span></p>
+                    <p className="text-[#64748b] dark:text-gray-300">Total Points: <span className="font-bold text-[#4f46e5] dark:text-emerald-400">{totalPoints}</span></p>
+                    <span className="text-[#cbd5e1] dark:text-gray-600">|</span>
+                    <p className="text-[#64748b] dark:text-gray-300">Zikr Time: <span className="font-bold text-[#a855f7] dark:text-purple-400">{Math.floor((currentUser?.totalZikrTime || 0) / 60)}m</span></p>
                   </div>
                   {currentUser?.currentStreak > 0 && (
                     <div className="flex items-center gap-4 mt-2">
                       <div className="flex items-center gap-2">
-                        <Flame className="text-[#10b981]" size={20} />
-                        <span className="text-sm font-semibold text-[#10b981]">{currentUser.currentStreak} Day Streak!</span>
+                        <Flame className="text-[#10b981] dark:text-emerald-400" size={20} />
+                        <span className="text-sm font-semibold text-[#10b981] dark:text-emerald-400">{currentUser.currentStreak} Day Streak!</span>
                       </div>
-                      <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
-                        <Shield className="text-blue-600" size={16} />
-                        <span className="text-sm font-semibold text-blue-700">
+                      <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-700">
+                        <Shield className="text-blue-600 dark:text-blue-400" size={16} />
+                        <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
                           {calculateFreezeTokens(currentUser.totalPoints || 0) - (currentUser.activeFreezes || []).length}/10
                         </span>
                       </div>
@@ -2829,22 +2829,22 @@ const ZikrGame = () => {
                   )}
                 </div>
               </div>
-              <button onClick={handleLogout} className="p-3 hover:bg-[#f8fafc] rounded-full transition-colors">
-                <LogOut className="text-[#64748b]" size={24} />
+              <button onClick={handleLogout} className="p-3 hover:bg-[#f8fafc] dark:hover:bg-gray-700 rounded-full transition-colors">
+                <LogOut className="text-[#64748b] dark:text-gray-400" size={24} />
               </button>
             </div>
           </div>
 
           {/* Main Menu */}
-          <div className="bg-white rounded-3xl shadow-lg p-8 mb-6 border border-[#cbd5e1]">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-lg p-8 mb-6 border border-[#cbd5e1] dark:border-gray-700">
             <div className="text-center mb-8">
-              <div className="inline-block bg-gradient-to-r from-[#1e3a8a] to-[#4f46e5] text-white rounded-full p-6 mb-4">
+              <div className="inline-block bg-gradient-to-r from-[#1e3a8a] to-[#4f46e5] dark:from-emerald-600 dark:to-teal-600 text-white rounded-full p-6 mb-4">
                 <Trophy size={48} />
               </div>
-              <h1 className="text-4xl font-bold text-[#1e3a8a] mb-2">
+              <h1 className="text-4xl font-bold text-[#1e3a8a] dark:text-white mb-2">
                 Zikri
               </h1>
-              <p className="text-[#64748b]">Remember Allah, Earn Rewards</p>
+              <p className="text-[#64748b] dark:text-gray-300">Remember Allah, Earn Rewards</p>
             </div>
 
             <div className="space-y-4">
@@ -3238,9 +3238,9 @@ const ZikrGame = () => {
           </div>
 
           {/* Preferences */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
-            <h3 className="text-xl font-bold text-[#0f172a] mb-4 flex items-center gap-2">
-              <Zap className="text-blue-500" size={24} />
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1] dark:border-gray-700">
+            <h3 className="text-xl font-bold text-[#0f172a] dark:text-white mb-4 flex items-center gap-2">
+              <Zap className="text-blue-500 dark:text-blue-400" size={24} />
               Preferences
             </h3>
             
@@ -3248,8 +3248,8 @@ const ZikrGame = () => {
               {/* Sound Toggle */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-gray-800">Sound Effects</p>
-                  <p className="text-sm text-gray-600">Enable tap sounds and audio feedback</p>
+                  <p className="font-semibold text-gray-800 dark:text-gray-100">Sound Effects</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Enable tap sounds and audio feedback</p>
                 </div>
                 <button
                   onClick={toggleSounds}
@@ -3269,10 +3269,10 @@ const ZikrGame = () => {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <p className="font-semibold text-gray-800">Zikr Speed</p>
-                    <p className="text-sm text-gray-600">Adjust phrase movement speed</p>
+                    <p className="font-semibold text-gray-800 dark:text-gray-100">Zikr Speed</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Adjust phrase movement speed</p>
                   </div>
-                  <span className="text-sm font-bold text-blue-600">
+                  <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
                     {phraseSpeed === 1 ? 'Slow' : phraseSpeed === 2 ? 'Medium' : 'Fast'}
                   </span>
                 </div>
@@ -3283,8 +3283,8 @@ const ZikrGame = () => {
                       onClick={() => setPhraseSpeed(speed)}
                       className={`flex-1 py-2 rounded-lg font-semibold transition-all ${
                         phraseSpeed === speed
-                          ? 'bg-blue-500 text-white shadow-lg'
-                          : 'bg-gray-100 text-gray-700 hover:bg-blue-100'
+                          ? 'bg-blue-500 dark:bg-blue-600 text-white shadow-lg'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-100 dark:hover:bg-gray-600'
                       }`}
                     >
                       {speed === 1 ? 'Slow' : speed === 2 ? 'Medium' : 'Fast'}
@@ -3296,8 +3296,8 @@ const ZikrGame = () => {
               {/* Leaderboard Visibility Toggle */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-gray-800">Leaderboard Visibility</p>
-                  <p className="text-sm text-gray-600">Show your score on the leaderboard</p>
+                  <p className="font-semibold text-gray-800 dark:text-gray-100">Leaderboard Visibility</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Show your score on the leaderboard</p>
                 </div>
                 <button
                   onClick={() => setLeaderboardVisible(!leaderboardVisible)}
@@ -3316,8 +3316,8 @@ const ZikrGame = () => {
               {/* Dark Mode Toggle */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-gray-800">Dark Mode</p>
-                  <p className="text-sm text-gray-600">Switch to dark theme</p>
+                  <p className="font-semibold text-gray-800 dark:text-gray-100">Dark Mode</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Switch to dark theme</p>
                 </div>
                 <button
                   onClick={() => setDarkMode(!darkMode)}
@@ -3928,27 +3928,27 @@ const ZikrGame = () => {
     const lockedPhrases = ZIKR_PHRASES.filter(p => !unlockedIds.includes(p.id));
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#e0e7ff] to-[#ffffff] p-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#e0e7ff] to-[#ffffff] dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
         <div className="max-w-2xl mx-auto">
           {/* Header */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1] dark:border-gray-700">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-[#0f172a]">Zikr Phrases</h2>
+              <h2 className="text-2xl font-bold text-[#0f172a] dark:text-white">Zikr Phrases</h2>
               <button
                 onClick={() => setScreen('menu')}
-                className="text-[#4f46e5] font-semibold hover:underline"
+                className="text-[#4f46e5] dark:text-emerald-400 font-semibold hover:underline"
               >
                 Back
               </button>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] rounded-2xl p-4 border border-[#cbd5e1]">
-                <p className="text-[#64748b] text-sm mb-1">Total Points</p>
-                <p className="text-2xl font-bold text-[#4f46e5] break-words">{totalPoints.toLocaleString()}</p>
+              <div className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] dark:from-gray-700 dark:to-gray-600 rounded-2xl p-4 border border-[#cbd5e1] dark:border-gray-600">
+                <p className="text-[#64748b] dark:text-gray-300 text-sm mb-1">Total Points</p>
+                <p className="text-2xl font-bold text-[#4f46e5] dark:text-emerald-400 break-words">{totalPoints.toLocaleString()}</p>
               </div>
-              <div className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] rounded-2xl p-4 border border-[#cbd5e1]">
-                <p className="text-[#64748b] text-sm mb-1">Total Zikr Time</p>
-                <p className="text-2xl font-bold text-[#a855f7]">{Math.floor((currentUser?.totalZikrTime || 0) / 60)}m</p>
+              <div className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] dark:from-gray-700 dark:to-gray-600 rounded-2xl p-4 border border-[#cbd5e1] dark:border-gray-600">
+                <p className="text-[#64748b] dark:text-gray-300 text-sm mb-1">Total Zikr Time</p>
+                <p className="text-2xl font-bold text-[#a855f7] dark:text-purple-400">{Math.floor((currentUser?.totalZikrTime || 0) / 60)}m</p>
               </div>
             </div>
           </div>
