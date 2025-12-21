@@ -4222,10 +4222,23 @@ const ZikrGame = () => {
 
   // Achievements screen
   if (screen === 'achievements') {
-    const userAchievements = currentUser?.achievements || [];
-    const unlockedIds = getUnlockedPhraseIds(totalPoints);
-    const unlockedPhrases = ZIKR_PHRASES.filter(p => unlockedIds.includes(p.id));
-    const lockedPhrases = ZIKR_PHRASES.filter(p => !unlockedIds.includes(p.id));
+    // Safety check - if no user, redirect to menu
+    if (!currentUser || !currentUser.userId) {
+      console.error('[ACHIEVEMENTS] No current user, redirecting to menu');
+      setScreen('menu');
+      return null;
+    }
+    
+    // Wrap ENTIRE screen in try-catch
+    try {
+      const userAchievements = currentUser?.achievements || [];
+      const unlockedIds = getUnlockedPhraseIds(totalPoints);
+      const unlockedPhrases = ZIKR_PHRASES.filter(p => unlockedIds.includes(p.id));
+      const lockedPhrases = ZIKR_PHRASES.filter(p => !unlockedIds.includes(p.id));
+      
+      console.log('[ACHIEVEMENTS] Screen loading successfully');
+      console.log('[ACHIEVEMENTS] User achievements:', userAchievements.length);
+      console.log('[ACHIEVEMENTS] Unlocked phrases:', unlockedPhrases.length);
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#e0e7ff] to-[#ffffff] p-4">
@@ -4257,37 +4270,40 @@ const ZikrGame = () => {
             </h3>
             <div className="grid grid-cols-1 gap-4">
               {ACHIEVEMENTS.map(achievement => {
-                const isUnlocked = userAchievements.includes(achievement.id);
-                let progress = 0;
+                try {
+                  const isUnlocked = userAchievements.includes(achievement.id);
+                  let progress = 0;
 
-                // Calculate progress
-                switch (achievement.requirement.type) {
-                  case 'sessions':
-                    progress = Math.min(100, ((currentUser?.sessionsCompleted || 0) / achievement.requirement.count) * 100);
-                    break;
-                  case 'points':
-                    progress = Math.min(100, (totalPoints / achievement.requirement.count) * 100);
-                    break;
-                  case 'streak':
-                    progress = Math.min(100, ((currentUser?.currentStreak || 0) / achievement.requirement.count) * 100);
-                    break;
-                  case 'time':
-                    progress = Math.min(100, ((currentUser?.totalZikrTime || 0) / achievement.requirement.count) * 100);
-                    break;
-                  case 'unlocked':
-                    progress = Math.min(100, (getUnlockedPhraseIds(totalPoints).length / achievement.requirement.count) * 100);
-                    break;
-                }
+                  // Calculate progress
+                  switch (achievement.requirement.type) {
+                    case 'sessions':
+                      progress = Math.min(100, ((currentUser?.sessionsCompleted || 0) / achievement.requirement.count) * 100);
+                      break;
+                    case 'points':
+                      progress = Math.min(100, (totalPoints / achievement.requirement.count) * 100);
+                      break;
+                    case 'streak':
+                      progress = Math.min(100, ((currentUser?.currentStreak || 0) / achievement.requirement.count) * 100);
+                      break;
+                    case 'time':
+                      progress = Math.min(100, ((currentUser?.totalZikrTime || 0) / achievement.requirement.count) * 100);
+                      break;
+                    case 'unlocked':
+                      progress = Math.min(100, (getUnlockedPhraseIds(totalPoints).length / achievement.requirement.count) * 100);
+                      break;
+                    default:
+                      progress = 0;
+                  }
 
-                return (
-                  <div
-                    key={achievement.id}
-                    className={`bg-gradient-to-r rounded-2xl shadow-lg p-6 border-2 ${
-                      isUnlocked 
-                        ? 'from-[#e0e7ff] to-[#f8fafc] border-[#a855f7]' 
-                        : 'from-[#f8fafc] to-[#ffffff] border-[#cbd5e1] opacity-60'
-                    }`}
-                  >
+                  return (
+                    <div
+                      key={achievement.id}
+                      className={`bg-gradient-to-r rounded-2xl shadow-lg p-6 border-2 ${
+                        isUnlocked 
+                          ? 'from-[#e0e7ff] to-[#f8fafc] border-[#a855f7]' 
+                          : 'from-[#f8fafc] to-[#ffffff] border-[#cbd5e1] opacity-60'
+                      }`}
+                    >
                     <div className="flex items-center gap-4">
                       <div
                         className={`text-5xl ${
@@ -4317,6 +4333,10 @@ const ZikrGame = () => {
                     </div>
                   </div>
                 );
+                } catch (error) {
+                  console.error('[ACHIEVEMENTS] Error rendering achievement:', achievement?.id, error);
+                  return null; // Skip this achievement if there's an error
+                }
               })}
             </div>
           </div>
@@ -4329,6 +4349,7 @@ const ZikrGame = () => {
             </h3>
             <div className="space-y-3">
               {unlockedPhrases.map(phrase => {
+                try {
                 const phraseCount = (currentUser?.phraseCounts || {})[phrase.id] || 0;
                 return (
                   <div key={phrase.id} className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] rounded-xl p-4 border-2 border-[#4f46e5]">
@@ -4347,6 +4368,10 @@ const ZikrGame = () => {
                     </div>
                   </div>
                 );
+                } catch (error) {
+                  console.error('[ACHIEVEMENTS] Error rendering phrase:', phrase?.id, error);
+                  return null;
+                }
               })}
             </div>
           </div>
@@ -4567,6 +4592,25 @@ const ZikrGame = () => {
         )}
       </div>
     );
+    } catch (error) {
+      console.error('[ACHIEVEMENTS] Error rendering screen:', error);
+      // Return error screen instead of crashing
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-[#f8fafc] via-[#e0e7ff] to-[#ffffff] p-4 flex items-center justify-center">
+          <div className="bg-white rounded-3xl shadow-lg p-8 max-w-md text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Error Loading Achievements</h2>
+            <p className="text-gray-600 mb-6">Sorry, there was an error loading this page. Please try again.</p>
+            <button
+              onClick={() => setScreen('menu')}
+              className="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700"
+            >
+              Back to Menu
+            </button>
+          </div>
+        </div>
+      );
+    }
   }
 
   return null;
