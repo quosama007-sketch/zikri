@@ -760,7 +760,8 @@ const ZikrGame = () => {
     });
     
     return () => unsubscribe();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
 
   // Save profile preferences whenever they change
   useEffect(() => {
@@ -784,7 +785,8 @@ const ZikrGame = () => {
     if (currentUser && currentUser.userId) {
       saveProfilePreferences();
     }
-  }, [profileAvatar, phraseSpeed, userGender, leaderboardVisible]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileAvatar, phraseSpeed, userGender, leaderboardVisible]); // currentUser and saveGameProgress intentionally omitted
 
   // Sync totalPoints when currentUser updates
   useEffect(() => {
@@ -851,7 +853,8 @@ const ZikrGame = () => {
     if (screen === 'leaderboard' && isAuthenticated) {
       loadLeaderboard();
     }
-  }, [screen, isAuthenticated]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen, isAuthenticated]); // loadLeaderboard intentionally omitted
 
   // ===== STREAK FREEZE TOKEN SYSTEM =====
   
@@ -1350,7 +1353,8 @@ const ZikrGame = () => {
         transitionBackgroundAndAudio(newIndex);
       }
     }
-  }, [sessionScore, gameMode, screen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionScore, gameMode, screen]); // Functions intentionally omitted
   
   // Initialize audio when game starts (Focus Mode)
   useEffect(() => {
@@ -1385,7 +1389,8 @@ const ZikrGame = () => {
       }
       setIsAudioLoaded(false);
     };
-  }, [gameMode, screen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameMode, screen]); // isAudioMuted, soundsEnabled, and functions intentionally omitted
   
   // Handle audio mute/unmute
   const toggleAudioMute = async () => {
