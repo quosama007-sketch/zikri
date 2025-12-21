@@ -759,11 +759,11 @@ const ZikrGame = () => {
 
   // Update daily streak when user logs in or app loads
   useEffect(() => {
-    if (currentUser && currentUser.userId && isAuthenticated) {
+    if (currentUser && currentUser.userId) {
       console.log('[APP LOAD] Updating daily streak for logged-in user');
       updateDailyStreak();
     }
-  }, [isAuthenticated]); // Only run when authentication status changes
+  }, [currentUser?.userId]); // Run when user ID is available (on login or app reload)
 
   // Save profile preferences whenever they change
   useEffect(() => {
