@@ -4037,7 +4037,6 @@ const ZikrGame = () => {
                         <Lock className="text-[#94a3b8]" size={24} />
                         <div>
                           <p className="text-lg font-bold text-[#94a3b8]">Hidden Phrase #{phrase.id}</p>
-                          <p className="text-xs text-[#94a3b8]">{phrase.category.split(' - ')[0]}</p>
                         </div>
                       </div>
                       <span className="text-sm font-bold text-[#4f46e5] bg-[#e0e7ff] px-3 py-1 rounded-full">
@@ -4391,7 +4390,6 @@ const ZikrGame = () => {
                         <Lock className="text-[#94a3b8]" size={24} />
                         <div>
                           <p className="text-lg font-bold text-[#94a3b8]">Hidden Phrase #{phrase.id}</p>
-                          <p className="text-xs text-[#94a3b8]">{phrase.category.split(' - ')[0]}</p>
                         </div>
                       </div>
                       <span className="text-sm font-bold text-[#4f46e5] bg-[#e0e7ff] px-3 py-1 rounded-full">
