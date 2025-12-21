@@ -1,11 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, Heart, Pause, Play, Lock, Unlock, LogOut, User, Award, TrendingUp, Sparkles, Star, Flame, Clock, Target, Zap, Crown, Medal, Users, Circle, Shield, Calendar } from 'lucide-react';
+import { Trophy, Heart, Pause, Play, Lock, Unlock, LogOut, User, Award, TrendingUp, Sparkles, Star, Flame, Clock, Target, Zap, Crown, Medal, Users, Circle, Shield, Calendar, Bell, BellOff } from 'lucide-react';
 
 // Firebase imports
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase-config';
 import { registerUser, loginUser, logoutUser } from './firebase-auth';
 import { getUserData, saveGameProgress, getLeaderboard, incrementPhraseCount } from './firebase-data';
+
+// Notification imports
+import { DEFAULT_NOTIFICATION_SETTINGS } from './notifications-config';
+import { 
+  requestNotificationPermission, 
+  initializeNotifications, 
+  sendAchievementNotification,
+  sendTestNotification,
+  getNotificationPermission 
+} from './notification-service';
 
 // Zikr phrases data
 const ZIKR_PHRASES = [
@@ -677,6 +687,8 @@ const ZikrGame = () => {
   const [leaderboardVisible, setLeaderboardVisible] = useState(true); // Leaderboard visibility
   const [profileAvatar, setProfileAvatar] = useState('dove'); // Selected animal avatar
   const [darkMode, setDarkMode] = useState(false); // Dark mode toggle
+  const [notificationSettings, setNotificationSettings] = useState(DEFAULT_NOTIFICATION_SETTINGS); // Notification settings
+  const [notificationPermission, setNotificationPermission] = useState('default'); // Notification permission status
   const [isAudioLoaded, setIsAudioLoaded] = useState(false);
   const audioRef = useRef(null);
   const nextAudioRef = useRef(null); // For preloading
@@ -746,6 +758,7 @@ const ZikrGame = () => {
           setUserGender(result.data.userGender || ''); // Default to empty
           setLeaderboardVisible(result.data.leaderboardVisible !== undefined ? result.data.leaderboardVisible : true); // Default to visible
           setDarkMode(result.data.darkMode || false); // Default to light mode
+          setNotificationSettings(result.data.notificationSettings || DEFAULT_NOTIFICATION_SETTINGS); // Load notification settings
           setShowAuth(false);
           
           // Update daily streak - pass user data directly instead of waiting for state
@@ -775,7 +788,8 @@ const ZikrGame = () => {
         phraseSpeed,
         userGender,
         leaderboardVisible,
-        darkMode
+        darkMode,
+        notificationSettings
       };
       
       const result = await saveGameProgress(currentUser.userId, preferences);
@@ -789,7 +803,7 @@ const ZikrGame = () => {
       saveProfilePreferences();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileAvatar, phraseSpeed, userGender, leaderboardVisible, darkMode]); // currentUser and saveGameProgress intentionally omitted
+  }, [profileAvatar, phraseSpeed, userGender, leaderboardVisible, darkMode, notificationSettings]); // currentUser and saveGameProgress intentionally omitted
 
   // Apply dark mode to HTML root element
   useEffect(() => {
@@ -799,6 +813,28 @@ const ZikrGame = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [darkMode]);
+
+  // Initialize notifications when user logs in and settings are enabled
+  useEffect(() => {
+    const initNotifications = async () => {
+      if (!currentUser || !notificationSettings.enabled) return;
+      
+      // Check current permission status
+      const permission = getNotificationPermission();
+      setNotificationPermission(permission);
+      
+      // Initialize notification system if permitted
+      if (permission === 'granted') {
+        await initializeNotifications(notificationSettings, currentUser);
+        console.log('✅ Notifications initialized');
+      }
+    };
+    
+    if (currentUser) {
+      initNotifications();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, notificationSettings.enabled]); // Initialize when user logs in or settings change
 
   // Sync totalPoints when currentUser updates
   useEffect(() => {
@@ -1181,6 +1217,19 @@ const ZikrGame = () => {
     const newlyUnlockedIds = newAchievements.filter(id => !currentAchievements.includes(id));
     if (newlyUnlockedIds.length > 0) {
       console.log(`[ACHIEVEMENTS] ${newlyUnlockedIds.length} new achievement(s) unlocked!`);
+      
+      // Send achievement notifications
+      if (notificationSettings.achievements?.enabled && notificationPermission === 'granted') {
+        newlyUnlockedIds.forEach(achievementId => {
+          const achievement = ALL_ACHIEVEMENTS.find(a => a.id === achievementId);
+          if (achievement) {
+            setTimeout(() => {
+              sendAchievementNotification(achievement.name);
+            }, 2000); // Send notification after 2 seconds
+          }
+        });
+      }
+      
       // Show achievement notification after a delay
       setTimeout(() => {
         setUnlockedAchievementIds(newlyUnlockedIds);
@@ -3337,10 +3386,238 @@ const ZikrGame = () => {
             </div>
           </div>
 
+          {/* Notification Settings */}
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1] dark:border-gray-700">
+            <h3 className="text-xl font-bold text-[#0f172a] dark:text-white mb-4 flex items-center gap-2">
+              <Bell className="text-emerald-500 dark:text-emerald-400" size={24} />
+              Notification Settings
+            </h3>
+            
+            <div className="space-y-6">
+              {/* Master Toggle */}
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl border-2 border-emerald-200 dark:border-emerald-700">
+                <div>
+                  <p className="font-semibold text-gray-800 dark:text-gray-100">Enable Notifications</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Get reminders to do your daily Azkar</p>
+                  {notificationPermission === 'denied' && (
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1">⚠️ Permission denied. Enable in browser settings.</p>
+                  )}
+                  {notificationPermission === 'default' && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Click to request permission</p>
+                  )}
+                </div>
+                <button
+                  onClick={async () => {
+                    if (notificationPermission === 'default') {
+                      const granted = await requestNotificationPermission();
+                      setNotificationPermission(granted ? 'granted' : 'denied');
+                      if (granted) {
+                        setNotificationSettings(prev => ({ ...prev, enabled: true }));
+                      }
+                    } else if (notificationPermission === 'granted') {
+                      setNotificationSettings(prev => ({ ...prev, enabled: !prev.enabled }));
+                    }
+                  }}
+                  disabled={notificationPermission === 'denied'}
+                  className={`relative w-16 h-8 rounded-full transition-colors ${
+                    notificationSettings.enabled && notificationPermission === 'granted'
+                      ? 'bg-emerald-500 dark:bg-emerald-600'
+                      : 'bg-gray-300 dark:bg-gray-600'
+                  } ${notificationPermission === 'denied' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <div
+                    className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
+                      notificationSettings.enabled && notificationPermission === 'granted' ? 'transform translate-x-8' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Test Notification Button */}
+              {notificationPermission === 'granted' && notificationSettings.enabled && (
+                <button
+                  onClick={() => sendTestNotification()}
+                  className="w-full py-3 bg-blue-500 dark:bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Bell size={20} />
+                  Send Test Notification
+                </button>
+              )}
+
+              {/* Individual Notification Types */}
+              {notificationSettings.enabled && notificationPermission === 'granted' && (
+                <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Customize Notifications:</p>
+                  
+                  {/* Morning */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-800 dark:text-gray-100">☀️ Morning Reminder</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">7:00 AM daily</p>
+                    </div>
+                    <button
+                      onClick={() => setNotificationSettings(prev => ({
+                        ...prev,
+                        morning: { ...prev.morning, enabled: !prev.morning.enabled }
+                      }))}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        notificationSettings.morning.enabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
+                          notificationSettings.morning.enabled ? 'transform translate-x-6' : ''
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Evening */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-800 dark:text-gray-100">🌆 Evening Reminder</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">6:00 PM daily</p>
+                    </div>
+                    <button
+                      onClick={() => setNotificationSettings(prev => ({
+                        ...prev,
+                        evening: { ...prev.evening, enabled: !prev.evening.enabled }
+                      }))}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        notificationSettings.evening.enabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
+                          notificationSettings.evening.enabled ? 'transform translate-x-6' : ''
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Night */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-800 dark:text-gray-100">🌙 Night Reminder</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">9:00 PM daily</p>
+                    </div>
+                    <button
+                      onClick={() => setNotificationSettings(prev => ({
+                        ...prev,
+                        night: { ...prev.night, enabled: !prev.night.enabled }
+                      }))}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        notificationSettings.night.enabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
+                          notificationSettings.night.enabled ? 'transform translate-x-6' : ''
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Friday */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-800 dark:text-gray-100">🕌 Friday Salawat</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Friday 12:00 PM</p>
+                    </div>
+                    <button
+                      onClick={() => setNotificationSettings(prev => ({
+                        ...prev,
+                        friday: { ...prev.friday, enabled: !prev.friday.enabled }
+                      }))}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        notificationSettings.friday.enabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
+                          notificationSettings.friday.enabled ? 'transform translate-x-6' : ''
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Streak Risk */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-800 dark:text-gray-100">⚠️ Streak Protection</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Alert if you haven't played</p>
+                    </div>
+                    <button
+                      onClick={() => setNotificationSettings(prev => ({
+                        ...prev,
+                        streakRisk: { ...prev.streakRisk, enabled: !prev.streakRisk.enabled }
+                      }))}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        notificationSettings.streakRisk.enabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
+                          notificationSettings.streakRisk.enabled ? 'transform translate-x-6' : ''
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Fun Random Messages */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-800 dark:text-gray-100">🎉 Fun Reminders</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Random creative messages</p>
+                    </div>
+                    <button
+                      onClick={() => setNotificationSettings(prev => ({
+                        ...prev,
+                        randomMessages: { ...prev.randomMessages, enabled: !prev.randomMessages.enabled }
+                      }))}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        notificationSettings.randomMessages.enabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
+                          notificationSettings.randomMessages.enabled ? 'transform translate-x-6' : ''
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Achievement Notifications */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-800 dark:text-gray-100">🎉 Achievements</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">When you unlock badges</p>
+                    </div>
+                    <button
+                      onClick={() => setNotificationSettings(prev => ({
+                        ...prev,
+                        achievements: { ...prev.achievements, enabled: !prev.achievements.enabled }
+                      }))}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        notificationSettings.achievements.enabled ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform ${
+                          notificationSettings.achievements.enabled ? 'transform translate-x-6' : ''
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Profile Avatar Selection */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
-            <h3 className="text-xl font-bold text-[#0f172a] mb-4 flex items-center gap-2">
-              <User className="text-purple-500" size={24} />
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1] dark:border-gray-700">
+            <h3 className="text-xl font-bold text-[#0f172a] dark:text-white mb-4 flex items-center gap-2">
+              <User className="text-purple-500 dark:text-purple-400" size={24} />
               Profile Avatar
             </h3>
             
