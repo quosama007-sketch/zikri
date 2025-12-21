@@ -757,6 +757,14 @@ const ZikrGame = () => {
     return () => unsubscribe();
   }, []);
 
+  // Update daily streak when user logs in or app loads
+  useEffect(() => {
+    if (currentUser && currentUser.userId && isAuthenticated) {
+      console.log('[APP LOAD] Updating daily streak for logged-in user');
+      updateDailyStreak();
+    }
+  }, [isAuthenticated]); // Only run when authentication status changes
+
   // Save profile preferences whenever they change
   useEffect(() => {
     const saveProfilePreferences = async () => {
@@ -3720,14 +3728,6 @@ const ZikrGame = () => {
               <Star className="text-yellow-400 animate-pulse fill-yellow-400" size={24} style={{ animationDelay: '0.2s' }} />
               <Sparkles className="text-yellow-500 animate-pulse" size={24} style={{ animationDelay: '0.4s' }} />
             </div>
-            {sessionStats.newAchievementEarned && (
-              <div className="mt-4 bg-gradient-to-r from-purple-100 to-pink-100 border-2 border-purple-300 rounded-xl p-3 animate-pulse">
-                <p className="text-purple-700 font-bold flex items-center justify-center gap-2">
-                  <Medal size={20} />
-                  New Achievement Unlocked!
-                </p>
-              </div>
-            )}
           </div>
 
           <div className="space-y-4 mb-8">
