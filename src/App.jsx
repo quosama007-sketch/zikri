@@ -676,6 +676,7 @@ const ZikrGame = () => {
   const [userGender, setUserGender] = useState(''); // 'male', 'female', or ''
   const [leaderboardVisible, setLeaderboardVisible] = useState(true); // Leaderboard visibility
   const [profileAvatar, setProfileAvatar] = useState('dove'); // Selected animal avatar
+  const [darkMode, setDarkMode] = useState(false); // Dark mode toggle
   const [isAudioLoaded, setIsAudioLoaded] = useState(false);
   const audioRef = useRef(null);
   const nextAudioRef = useRef(null); // For preloading
@@ -744,6 +745,7 @@ const ZikrGame = () => {
           setPhraseSpeed(result.data.phraseSpeed || 2); // Default to Medium
           setUserGender(result.data.userGender || ''); // Default to empty
           setLeaderboardVisible(result.data.leaderboardVisible !== undefined ? result.data.leaderboardVisible : true); // Default to visible
+          setDarkMode(result.data.darkMode || false); // Default to light mode
           setShowAuth(false);
           
           // Update daily streak - pass user data directly instead of waiting for state
@@ -772,7 +774,8 @@ const ZikrGame = () => {
         profileAvatar,
         phraseSpeed,
         userGender,
-        leaderboardVisible
+        leaderboardVisible,
+        darkMode
       };
       
       const result = await saveGameProgress(currentUser.userId, preferences);
@@ -786,7 +789,16 @@ const ZikrGame = () => {
       saveProfilePreferences();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profileAvatar, phraseSpeed, userGender, leaderboardVisible]); // currentUser and saveGameProgress intentionally omitted
+  }, [profileAvatar, phraseSpeed, userGender, leaderboardVisible, darkMode]); // currentUser and saveGameProgress intentionally omitted
+
+  // Apply dark mode to HTML root element
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
 
   // Sync totalPoints when currentUser updates
   useEffect(() => {
@@ -2503,16 +2515,16 @@ const ZikrGame = () => {
   // Auth screen
   if (showAuth) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 w-full max-w-md">
           <div className="text-center mb-8">
-            <div className="inline-block bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-full p-4 mb-4">
+            <div className="inline-block bg-gradient-to-r from-emerald-500 to-teal-600 dark:from-emerald-600 dark:to-teal-700 text-white rounded-full p-4 mb-4">
               <Trophy size={40} />
             </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent mb-2">
               Zikr Game
             </h1>
-            <p className="text-gray-600">Remember Allah, Earn Rewards</p>
+            <p className="text-gray-600 dark:text-gray-300">Remember Allah, Earn Rewards</p>
           </div>
 
           <div className="space-y-4">
@@ -2521,14 +2533,14 @@ const ZikrGame = () => {
               placeholder="Username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors"
+              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none transition-colors"
             />
             <input
               type="password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors"
+              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none transition-colors"
             />
             <button
               onClick={handleAuth}
@@ -3298,6 +3310,28 @@ const ZikrGame = () => {
                       leaderboardVisible ? 'transform translate-x-8' : ''
                     }`}
                   />
+                </button>
+              </div>
+
+              {/* Dark Mode Toggle */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-gray-800">Dark Mode</p>
+                  <p className="text-sm text-gray-600">Switch to dark theme</p>
+                </div>
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  className={`relative w-16 h-8 rounded-full transition-colors ${
+                    darkMode ? 'bg-indigo-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <div
+                    className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform flex items-center justify-center text-xs ${
+                      darkMode ? 'transform translate-x-8' : ''
+                    }`}
+                  >
+                    {darkMode ? '🌙' : '☀️'}
+                  </div>
                 </button>
               </div>
             </div>
