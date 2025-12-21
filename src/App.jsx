@@ -746,12 +746,10 @@ const ZikrGame = () => {
           setLeaderboardVisible(result.data.leaderboardVisible !== undefined ? result.data.leaderboardVisible : true); // Default to visible
           setShowAuth(false);
           
-          // Update daily streak after user data is loaded
-          // Small delay to ensure state is updated
-          setTimeout(() => {
-            console.log('[APP LOAD] Updating daily streak after user login');
-            updateDailyStreak();
-          }, 100);
+          // Update daily streak - pass user data directly instead of waiting for state
+          console.log('[APP LOAD] Updating daily streak after user login');
+          const userData = { userId: user.uid, ...result.data };
+          updateDailyStreak(userData);
         }
       } else {
         // User is signed out
@@ -911,24 +909,27 @@ const ZikrGame = () => {
   // ===== DAILY STREAK SYSTEM (Calendar-based) =====
   
   // Update daily streak (called when game starts)
-  const updateDailyStreak = async () => {
-    console.log('[STREAK UPDATE] Function called. Current user:', currentUser ? 'exists' : 'null');
-    if (!currentUser || !currentUser.userId) {
-      console.log('[STREAK UPDATE] No current user, returning early');
+  const updateDailyStreak = async (userData = null) => {
+    // Use provided userData or fall back to currentUser state
+    const user = userData || currentUser;
+    
+    console.log('[STREAK UPDATE] Function called. User data:', user ? 'exists' : 'null');
+    if (!user || !user.userId) {
+      console.log('[STREAK UPDATE] No user data, returning early');
       return;
     }
     
-    console.log('[STREAK UPDATE] Current streak:', currentUser.currentStreak);
-    console.log('[STREAK UPDATE] Last played:', currentUser.lastPlayedDate);
+    console.log('[STREAK UPDATE] Current streak:', user.currentStreak);
+    console.log('[STREAK UPDATE] Last played:', user.lastPlayedDate);
     
     const now = new Date();
     const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Today at midnight
     
-    const lastPlayed = currentUser.lastPlayedDate ? new Date(currentUser.lastPlayedDate) : null;
+    const lastPlayed = user.lastPlayedDate ? new Date(user.lastPlayedDate) : null;
     const lastPlayedDate = lastPlayed ? new Date(lastPlayed.getFullYear(), lastPlayed.getMonth(), lastPlayed.getDate()) : null;
     
-    let newStreak = currentUser.currentStreak || 0;
-    let newLongestStreak = currentUser.longestStreak || 0;
+    let newStreak = user.currentStreak || 0;
+    let newLongestStreak = user.longestStreak || 0;
     
     console.log('[STREAK UPDATE] Today:', todayDate.toISOString());
     console.log('[STREAK UPDATE] Last played date:', lastPlayedDate ? lastPlayedDate.toISOString() : 'never');
@@ -958,8 +959,8 @@ const ZikrGame = () => {
         
         // Check if missed days have active freezes or can use tokens
         let canProtectStreak = false;
-        const activeFreezes = currentUser.activeFreezes || [];
-        const availableTokens = calculateFreezeTokens(currentUser.totalPoints || 0);
+        const activeFreezes = user.activeFreezes || [];
+        const availableTokens = calculateFreezeTokens(user.totalPoints || 0);
         const usedTokens = activeFreezes.length;
         const remainingTokens = availableTokens - usedTokens;
         
@@ -990,8 +991,8 @@ const ZikrGame = () => {
             }
           }
           
-          // Update active freezes in current user
-          currentUser.activeFreezes = newFreezes;
+          // Update active freezes locally (will be saved to DB below)
+          const updatedUser = { ...user, activeFreezes: newFreezes };
           
           // Continue streak
           newStreak += 1;
@@ -1019,8 +1020,8 @@ const ZikrGame = () => {
         // Update active freezes in database if tokens were used
         if (canProtectStreak) {
           try {
-            await saveGameProgress(currentUser.userId, {
-              activeFreezes: currentUser.activeFreezes
+            await saveGameProgress(user.userId, {
+              activeFreezes: newFreezes
             });
           } catch (error) {
             console.error('[FREEZE] Error updating active freezes:', error);
@@ -1037,7 +1038,7 @@ const ZikrGame = () => {
     
     // Update in Firebase
     try {
-      await saveGameProgress(currentUser.userId, {
+      await saveGameProgress(user.userId, {
         currentStreak: newStreak,
         longestStreak: newLongestStreak,
         lastPlayedDate: now.toISOString()
@@ -1045,7 +1046,7 @@ const ZikrGame = () => {
       
       // Update local state
       setCurrentUser(prev => {
-        console.log('[STREAK] Updating local state - old streak:', prev.currentStreak, '→ new:', newStreak);
+        console.log('[STREAK] Updating local state - old streak:', prev?.currentStreak, '→ new:', newStreak);
         return {
           ...prev,
           currentStreak: newStreak,
