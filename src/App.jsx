@@ -909,15 +909,28 @@ const ZikrGame = () => {
   // Auth functions
   const handleAuth = async () => {
     if (!username || !password) {
-      alert('Please enter username and password');
+      alert('Please enter email and password');
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(username.trim())) {
+      alert('⚠️ Invalid Email Format\n\nPlease enter a valid email address.\n\nExample: user@gmail.com');
+      return;
+    }
+
+    // Password length validation for signup
+    if (isSignUp && password.length < 6) {
+      alert('⚠️ Password Too Short\n\nPassword must be at least 6 characters long.');
       return;
     }
 
     let result;
     if (isSignUp) {
-      result = await registerUser(username, password);
+      result = await registerUser(username.trim(), password);
     } else {
-      result = await loginUser(username, password);
+      result = await loginUser(username.trim(), password);
     }
 
     if (result.success) {
@@ -934,8 +947,42 @@ const ZikrGame = () => {
       
       console.log('✅ Logged in successfully');
     } else {
-      alert(result.error || 'Authentication failed');
+      // Convert Firebase error codes to friendly messages
+      const friendlyError = getFriendlyErrorMessage(result.error);
+      alert(friendlyError);
     }
+  };
+
+  // Convert Firebase error codes to user-friendly messages
+  const getFriendlyErrorMessage = (error) => {
+    if (!error) return 'Authentication failed. Please try again.';
+    
+    const errorString = error.toString().toLowerCase();
+    
+    if (errorString.includes('invalid-email')) {
+      return '⚠️ Invalid Email Format\n\nPlease enter a valid email address.\n\nExample: user@gmail.com';
+    }
+    if (errorString.includes('user-not-found')) {
+      return '❌ Account Not Found\n\nNo account exists with this email.\n\nPlease sign up first or check your email.';
+    }
+    if (errorString.includes('wrong-password')) {
+      return '❌ Incorrect Password\n\nThe password you entered is incorrect.\n\nPlease try again or reset your password.';
+    }
+    if (errorString.includes('email-already-in-use')) {
+      return '⚠️ Email Already Registered\n\nThis email is already registered.\n\nPlease login instead or use a different email.';
+    }
+    if (errorString.includes('weak-password')) {
+      return '⚠️ Weak Password\n\nPassword must be at least 6 characters long.\n\nPlease choose a stronger password.';
+    }
+    if (errorString.includes('too-many-requests')) {
+      return '⚠️ Too Many Attempts\n\nToo many failed login attempts.\n\nPlease try again in a few minutes.';
+    }
+    if (errorString.includes('network')) {
+      return '📡 Network Error\n\nPlease check your internet connection and try again.';
+    }
+    
+    // Default friendly message
+    return '❌ Authentication Error\n\nSomething went wrong. Please try again.\n\nIf the problem persists, contact support.';
   };
 
   const handleLogout = async () => {
@@ -2741,20 +2788,32 @@ const ZikrGame = () => {
           </div>
 
           <div className="space-y-4">
-            <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none transition-colors"
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none transition-colors"
-            />
+            <div>
+              <input
+                type="email"
+                placeholder="Email (e.g., user@gmail.com)"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none transition-colors"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 px-2">
+                📧 Enter a valid email address
+              </p>
+            </div>
+            <div>
+              <input
+                type="password"
+                placeholder="Password (min 6 characters)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none transition-colors"
+              />
+              {isSignUp && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 px-2">
+                  🔒 Password must be at least 6 characters
+                </p>
+              )}
+            </div>
             <button
               onClick={handleAuth}
               className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all"
@@ -2763,7 +2822,7 @@ const ZikrGame = () => {
             </button>
             <button
               onClick={() => setIsSignUp(!isSignUp)}
-              className="w-full text-emerald-600 py-2 text-sm hover:underline"
+              className="w-full text-emerald-600 dark:text-emerald-400 py-2 text-sm hover:underline"
             >
               {isSignUp ? 'Already have an account? Login' : 'Need an account? Sign Up'}
             </button>
