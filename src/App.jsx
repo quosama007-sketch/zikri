@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, Heart, Pause, Play, Lock, Unlock, LogOut, User, Award, TrendingUp, Sparkles, Star, Flame, Clock, Target, Zap, Crown, Medal, Users, Circle, Shield, Calendar, Bell, BellOff } from 'lucide-react';
+import { Trophy, Heart, Pause, Play, Lock, Unlock, LogOut, User, Award, TrendingUp, Sparkles, Star, Flame, Clock, Target, Zap, Crown, Medal, Users, Circle, Shield, Calendar, Bell, BellOff, Share2, Download, ExternalLink } from 'lucide-react';
 
 // Firebase imports
 import { onAuthStateChanged } from 'firebase/auth';
@@ -16,6 +16,22 @@ import {
   sendTestNotification,
   getNotificationPermission 
 } from './notification-service';
+
+// Virtue imports
+import { 
+  VIRTUE_ONE_LINERS,
+  getRandomVirtue,
+  shouldUnlockVirtue,
+  getUnlockedVirtues 
+} from './virtues-config';
+
+// Sharing imports
+import {
+  generateSharingCard,
+  shareToSocial,
+  downloadImage,
+  getShareData
+} from './sharing-service';
 
 // Zikr phrases data
 const ZIKR_PHRASES = [
@@ -689,6 +705,23 @@ const ZikrGame = () => {
   const [darkMode, setDarkMode] = useState(false); // Dark mode toggle
   const [notificationSettings, setNotificationSettings] = useState(DEFAULT_NOTIFICATION_SETTINGS); // Notification settings
   const [notificationPermission, setNotificationPermission] = useState('default'); // Notification permission status
+  
+  // Virtue One-Liners System
+  const [showVirtuePopup, setShowVirtuePopup] = useState(false);
+  const [currentVirtue, setCurrentVirtue] = useState(null);
+  const [unlockedVirtues, setUnlockedVirtues] = useState([]);
+  const [phraseTapCounts, setPhraseTapCounts] = useState({}); // Track taps per phrase for virtue unlocks
+  
+  // Social Sharing System
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareData, setShareData] = useState(null);
+  const [sharingCardUrl, setSharingCardUrl] = useState(null);
+  const [isGeneratingCard, setIsGeneratingCard] = useState(false);
+  
+  // PWA Install
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  
   const [isAudioLoaded, setIsAudioLoaded] = useState(false);
   const audioRef = useRef(null);
   const nextAudioRef = useRef(null); // For preloading
@@ -759,6 +792,7 @@ const ZikrGame = () => {
           setLeaderboardVisible(result.data.leaderboardVisible !== undefined ? result.data.leaderboardVisible : true); // Default to visible
           setDarkMode(result.data.darkMode || false); // Default to light mode
           setNotificationSettings(result.data.notificationSettings || DEFAULT_NOTIFICATION_SETTINGS); // Load notification settings
+          setPhraseTapCounts(result.data.phraseTapCounts || {}); // Load phrase tap counts for virtues
           setShowAuth(false);
           
           // Update daily streak - pass user data directly instead of waiting for state
@@ -789,7 +823,8 @@ const ZikrGame = () => {
         userGender,
         leaderboardVisible,
         darkMode,
-        notificationSettings
+        notificationSettings,
+        phraseTapCounts
       };
       
       const result = await saveGameProgress(currentUser.userId, preferences);
@@ -835,6 +870,34 @@ const ZikrGame = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, notificationSettings.enabled]); // Initialize when user logs in or settings change
+
+  // PWA Install Prompt Listener
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later
+      setDeferredPrompt(e);
+      // Show install button
+      setShowInstallPrompt(true);
+      console.log('✅ PWA install prompt available');
+    };
+
+    const handleAppInstalled = () => {
+      // Hide the install button
+      setShowInstallPrompt(false);
+      setDeferredPrompt(null);
+      console.log('✅ PWA installed successfully');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
 
   // Sync totalPoints when currentUser updates
   useEffect(() => {
@@ -2340,6 +2403,14 @@ const ZikrGame = () => {
     
     setPhrases(prev => prev.filter(p => p.id !== phraseId));
     
+    // Track phrase taps for virtue unlocks (Focus mode only)
+    if (gameMode === 'focus' && phraseDataId) {
+      setPhraseTapCounts(prev => ({
+        ...prev,
+        [phraseDataId]: (prev[phraseDataId] || 0) + 1
+      }));
+    }
+    
     // Update session score ONLY for Focus Mode (point-based)
     if (gameMode === 'focus') {
       setSessionScore(prev => {
@@ -2554,6 +2625,99 @@ const ZikrGame = () => {
     }));
     
     setScreen('stats');
+    
+    // Check if any virtues should be shown after session
+    setTimeout(() => {
+      checkAndShowVirtue(phraseTapCounts);
+    }, 2000); // Show virtue after 2 seconds
+  };
+
+  // ============================================
+  // VIRTUE SYSTEM FUNCTIONS
+  // ============================================
+  
+  // Check and show virtue after session
+  const checkAndShowVirtue = (sessionPhraseCounts) => {
+    if (!sessionPhraseCounts || Object.keys(sessionPhraseCounts).length === 0) return;
+    
+    // Find phrases that unlocked new virtues during this session
+    for (const [phraseId, count] of Object.entries(sessionPhraseCounts)) {
+      const totalCount = phraseTapCounts[phraseId] || 0;
+      const virtue = getRandomVirtue(parseInt(phraseId));
+      
+      if (virtue && shouldUnlockVirtue(parseInt(phraseId), totalCount)) {
+        // Show the virtue popup
+        setCurrentVirtue({
+          phraseId: parseInt(phraseId),
+          phrase: ZIKR_PHRASES.find(p => p.id === parseInt(phraseId)),
+          virtue: virtue.text,
+          category: virtue.category
+        });
+        setShowVirtuePopup(true);
+        break; // Show one virtue at a time
+      }
+    }
+  };
+
+  // ============================================
+  // SHARING SYSTEM FUNCTIONS
+  // ============================================
+  
+  // Trigger share modal
+  const triggerShare = async (type, data) => {
+    const shareInfo = getShareData(type, data);
+    if (!shareInfo) return;
+    
+    setShareData({ type, ...data, text: shareInfo.text });
+    setIsGeneratingCard(true);
+    setShowShareModal(true);
+    
+    // Generate sharing card
+    try {
+      const cardUrl = await generateSharingCard(type, shareInfo.cardData, '/logo-192.png');
+      setSharingCardUrl(cardUrl);
+    } catch (error) {
+      console.error('Error generating sharing card:', error);
+    } finally {
+      setIsGeneratingCard(false);
+    }
+  };
+
+  // Handle social media share
+  const handleSocialShare = (platform) => {
+    if (!shareData || !sharingCardUrl) return;
+    shareToSocial(platform, shareData.text, sharingCardUrl);
+  };
+
+  // Handle download image
+  const handleDownloadCard = () => {
+    if (!sharingCardUrl) return;
+    downloadImage(sharingCardUrl, `zikri-${shareData.type}.png`);
+  };
+
+  // ============================================
+  // PWA INSTALL FUNCTION
+  // ============================================
+  
+  // Handle PWA install
+  const handlePWAInstall = async () => {
+    if (!deferredPrompt) return;
+    
+    // Show the install prompt
+    deferredPrompt.prompt();
+    
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      console.log('✅ User accepted PWA install');
+    } else {
+      console.log('❌ User dismissed PWA install');
+    }
+    
+    // Clear the deferred prompt
+    setDeferredPrompt(null);
+    setShowInstallPrompt(false);
   };
 
   // Cleanup on unmount
@@ -2940,6 +3104,17 @@ const ZikrGame = () => {
                   <span className="text-sm leading-tight">My Profile</span>
                 </button>
               </div>
+              
+              {/* PWA Install Button */}
+              {showInstallPrompt && (
+                <button
+                  onClick={handlePWAInstall}
+                  className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 dark:from-purple-600 dark:to-indigo-700 text-white py-4 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex items-center justify-center gap-2 mt-4"
+                >
+                  <Download size={24} />
+                  Install Zikri App
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -4183,6 +4358,23 @@ const ZikrGame = () => {
                   })}
                 </div>
                 
+                {/* Share Button */}
+                <button
+                  onClick={() => {
+                    const achievementName = ACHIEVEMENTS.find(a => 
+                      unlockedAchievementIds.includes(a.id)
+                    )?.name;
+                    if (achievementName) {
+                      triggerShare('achievement', { name: achievementName });
+                      setShowAchievementUnlocked(false);
+                    }
+                  }}
+                  className="w-full mb-3 bg-gradient-to-r from-blue-500 to-cyan-600 text-white px-6 py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-cyan-700 transition-all flex items-center justify-center gap-2"
+                >
+                  <Share2 size={20} />
+                  Share Achievement
+                </button>
+                
                 {/* Continue Button */}
                 <button
                   onClick={() => setShowAchievementUnlocked(false)}
@@ -4928,7 +5120,162 @@ const ZikrGame = () => {
     }
   }
 
-  return null;
+  // ============================================
+  // GLOBAL MODALS (Rendered on all screens)
+  // ============================================
+  
+  return (
+    <>
+      {/* Virtue One-Liner Popup */}
+      {showVirtuePopup && currentVirtue && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 dark:from-emerald-700 dark:to-teal-800 rounded-3xl shadow-2xl max-w-lg w-full p-8 relative border-4 border-[#D4AF37]">
+            {/* Close button */}
+            <button
+              onClick={() => setShowVirtuePopup(false)}
+              className="absolute top-4 right-4 text-white/80 hover:text-white text-2xl font-bold"
+            >
+              ×
+            </button>
+            
+            {/* Icon */}
+            <div className="text-center mb-6">
+              <div className="text-7xl mb-4">📿</div>
+              <h3 className="text-3xl font-bold text-white mb-2">Virtue Unlocked!</h3>
+              <div className="text-lg text-emerald-100 font-semibold">
+                {currentVirtue.phrase?.transliteration || 'Zikr'}
+              </div>
+            </div>
+            
+            {/* Virtue text */}
+            <div className="bg-white/10 backdrop-blur rounded-2xl p-6 mb-6">
+              <p className="text-white text-xl leading-relaxed text-center font-medium">
+                {currentVirtue.virtue}
+              </p>
+            </div>
+            
+            {/* Category badge */}
+            <div className="text-center mb-6">
+              <span className="inline-block bg-[#D4AF37] text-teal-900 px-4 py-2 rounded-full text-sm font-bold">
+                {currentVirtue.category}
+              </span>
+            </div>
+            
+            {/* Close button */}
+            <button
+              onClick={() => setShowVirtuePopup(false)}
+              className="w-full py-4 bg-white text-emerald-600 rounded-xl font-bold text-lg hover:bg-emerald-50 transition-colors shadow-lg"
+            >
+              Continue 🤲
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Social Sharing Modal */}
+      {showShareModal && shareData && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-gradient-to-r from-emerald-500 to-teal-600 p-6 rounded-t-3xl">
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <Share2 size={28} />
+                  Share Your Achievement
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowShareModal(false);
+                    setSharingCardUrl(null);
+                  }}
+                  className="text-white/80 hover:text-white text-3xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            
+            {/* Content */}
+            <div className="p-6">
+              {/* Preview Card */}
+              {isGeneratingCard ? (
+                <div className="aspect-square bg-gray-100 dark:bg-gray-700 rounded-2xl flex items-center justify-center mb-6">
+                  <div className="text-center">
+                    <div className="animate-spin text-4xl mb-2">⏳</div>
+                    <p className="text-gray-600 dark:text-gray-400">Generating beautiful card...</p>
+                  </div>
+                </div>
+              ) : sharingCardUrl ? (
+                <div className="mb-6">
+                  <img 
+                    src={sharingCardUrl} 
+                    alt="Share card" 
+                    className="w-full rounded-2xl shadow-lg"
+                  />
+                </div>
+              ) : null}
+              
+              {/* Share Text */}
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 mb-6">
+                <p className="text-sm text-gray-700 dark:text-gray-300">{shareData.text}</p>
+              </div>
+              
+              {/* Share Buttons */}
+              <div className="space-y-3">
+                <button
+                  onClick={() => handleSocialShare('whatsapp')}
+                  className="w-full py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                >
+                  <span className="text-xl">💬</span>
+                  Share on WhatsApp
+                </button>
+                
+                <button
+                  onClick={() => handleSocialShare('twitter')}
+                  className="w-full py-3 bg-blue-400 text-white rounded-xl font-semibold hover:bg-blue-500 transition-colors flex items-center justify-center gap-2"
+                >
+                  <span className="text-xl">🐦</span>
+                  Share on Twitter
+                </button>
+                
+                <button
+                  onClick={() => handleSocialShare('facebook')}
+                  className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <span className="text-xl">📘</span>
+                  Share on Facebook
+                </button>
+                
+                <button
+                  onClick={() => handleSocialShare('instagram')}
+                  className="w-full py-3 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 text-white rounded-xl font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                >
+                  <span className="text-xl">📸</span>
+                  Download for Instagram
+                </button>
+                
+                <button
+                  onClick={handleDownloadCard}
+                  className="w-full py-3 bg-gray-600 dark:bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Download size={20} />
+                  Download Image
+                </button>
+                
+                <button
+                  onClick={() => handleSocialShare('copy')}
+                  className="w-full py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-xl font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors flex items-center justify-center gap-2"
+                >
+                  <ExternalLink size={20} />
+                  Copy Link
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 };
 
 export default ZikrGame;
