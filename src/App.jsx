@@ -4,7 +4,7 @@ import { Trophy, Heart, Pause, Play, Lock, Unlock, LogOut, User, Award, Trending
 // Firebase imports
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase-config';
-import { registerUser, loginUser, logoutUser } from './firebase-auth';
+import { registerUser, loginUser, logoutUser, signInAsGuest, upgradeAnonymousAccount } from './firebase-auth';
 import { getUserData, saveGameProgress, getLeaderboard, incrementPhraseCount } from './firebase-data';
 
 // Notification imports
@@ -651,6 +651,16 @@ const ZikrGame = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+  
+  // Guest login state
+  const [showGuestModal, setShowGuestModal] = useState(false);
+  const [guestUsername, setGuestUsername] = useState('');
+  
+  // Account upgrade state
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [upgradeEmail, setUpgradeEmail] = useState('');
+  const [upgradePassword, setUpgradePassword] = useState('');
 
   // Game state
   const [screen, setScreen] = useState('menu'); // menu, game, stats, profile, leaderboard, achievements, mode-select, tasbih-setup
@@ -899,6 +909,22 @@ const ZikrGame = () => {
     };
   }, []);
 
+  // Show upgrade prompt for guest users at milestones
+  useEffect(() => {
+    if (!currentUser || !currentUser.isAnonymous) return;
+    
+    const points = currentUser.totalPoints || 0;
+    
+    // Show upgrade prompt at 1000, 5000, or 10000 points
+    if (points >= 1000 && points < 1100 && !showUpgradePrompt) {
+      setShowUpgradePrompt(true);
+    } else if (points >= 5000 && points < 5100 && !showUpgradePrompt) {
+      setShowUpgradePrompt(true);
+    } else if (points >= 10000 && points < 10100 && !showUpgradePrompt) {
+      setShowUpgradePrompt(true);
+    }
+  }, [currentUser, showUpgradePrompt]);
+
   // Sync totalPoints when currentUser updates
   useEffect(() => {
     if (currentUser && currentUser.totalPoints !== undefined) {
@@ -992,6 +1018,80 @@ const ZikrGame = () => {
       setIsAuthenticated(false);
       setShowAuth(true);
       setScreen('menu');
+    }
+  };
+  
+  // Handle guest login
+  const handleGuestLogin = async () => {
+    if (!guestUsername || guestUsername.trim().length < 2) {
+      alert('⚠️ Please enter a username\n\nUsername must be at least 2 characters long.');
+      return;
+    }
+    
+    const result = await signInAsGuest(guestUsername.trim());
+    
+    if (result.success) {
+      const userData = (await getUserData(result.userId)).data;
+      
+      setCurrentUser({
+        userId: result.userId,
+        username: result.username,
+        isAnonymous: true,
+        ...userData
+      });
+      setIsAuthenticated(true);
+      setShowAuth(false);
+      setShowGuestModal(false);
+      setGuestUsername('');
+      setTotalPoints(userData.totalPoints || 0);
+      
+      console.log('✅ Logged in as guest');
+    } else {
+      alert(result.error || 'Failed to login as guest');
+    }
+  };
+  
+  // Handle account upgrade
+  const handleUpgradeAccount = async () => {
+    if (!upgradeEmail || !upgradePassword) {
+      alert('⚠️ Please enter email and password');
+      return;
+    }
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(upgradeEmail.trim())) {
+      alert('⚠️ Invalid Email Format\n\nPlease enter a valid email address.\n\nExample: user@gmail.com');
+      return;
+    }
+    
+    // Password length validation
+    if (upgradePassword.length < 6) {
+      alert('⚠️ Password Too Short\n\nPassword must be at least 6 characters long.');
+      return;
+    }
+    
+    const result = await upgradeAnonymousAccount(upgradeEmail.trim(), upgradePassword);
+    
+    if (result.success) {
+      // Update current user
+      setCurrentUser(prev => ({
+        ...prev,
+        email: upgradeEmail,
+        isAnonymous: false
+      }));
+      
+      setShowUpgradeModal(false);
+      setShowUpgradePrompt(false);
+      setUpgradeEmail('');
+      setUpgradePassword('');
+      
+      alert('🎉 Account Upgraded!\n\nYour progress is now permanently saved!\n\nYou can login from any device with your email.');
+      
+      console.log('✅ Account upgraded successfully');
+    } else {
+      const friendlyError = getFriendlyErrorMessage(result.error);
+      alert(friendlyError);
     }
   };
   
@@ -2826,6 +2926,28 @@ const ZikrGame = () => {
             >
               {isSignUp ? 'Already have an account? Login' : 'Need an account? Sign Up'}
             </button>
+            
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">OR</span>
+              </div>
+            </div>
+            
+            {/* Play as Guest Button */}
+            <button
+              onClick={() => setShowGuestModal(true)}
+              className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 dark:from-purple-600 dark:to-indigo-700 text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex items-center justify-center gap-2"
+            >
+              <User size={20} />
+              Play as Guest
+            </button>
+            <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+              ⚠️ Guest accounts can't be recovered if browser data is cleared
+            </p>
           </div>
         </div>
       </div>
@@ -3477,6 +3599,44 @@ const ZikrGame = () => {
                 <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 font-medium">
                   {currentUser?.username || currentUser?.displayName || 'User'}
                 </div>
+              </div>
+              
+              {/* Account Type & Upgrade */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Account Type</label>
+                {currentUser?.isAnonymous ? (
+                  <div className="space-y-3">
+                    <div className="w-full px-4 py-3 bg-amber-50 border-2 border-amber-200 rounded-xl">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-amber-800 font-semibold">👤 Guest Account</p>
+                          <p className="text-xs text-amber-600 mt-1">Can't be recovered if browser data is cleared</p>
+                        </div>
+                        <span className="text-2xl">⚠️</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Crown size={20} />
+                      Upgrade to Email Account
+                    </button>
+                    <p className="text-xs text-center text-gray-600">
+                      💾 Save your progress forever & access from any device
+                    </p>
+                  </div>
+                ) : (
+                  <div className="w-full px-4 py-3 bg-emerald-50 border-2 border-emerald-200 rounded-xl">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-emerald-800 font-semibold">📧 Email Account</p>
+                        <p className="text-xs text-emerald-600 mt-1">{currentUser?.email || 'Permanently saved'}</p>
+                      </div>
+                      <span className="text-2xl">✅</span>
+                    </div>
+                  </div>
+                )}
               </div>
               
               {/* Gender Selection */}
@@ -5329,6 +5489,183 @@ const ZikrGame = () => {
                   Copy Link
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Guest Username Modal */}
+      {showGuestModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-md w-full p-8">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="text-6xl mb-4">👤</div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Play as Guest</h3>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Enter your name to get started</p>
+            </div>
+            
+            {/* Input */}
+            <div className="mb-6">
+              <input
+                type="text"
+                placeholder="Your name (e.g., Ahmed)"
+                value={guestUsername}
+                onChange={(e) => setGuestUsername(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleGuestLogin()}
+                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-purple-500 dark:focus:border-purple-400 focus:outline-none transition-colors"
+                autoFocus
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 px-2">
+                👤 Choose any name you like
+              </p>
+            </div>
+            
+            {/* Warning */}
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4 mb-6">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>⚠️ Important:</strong> Guest accounts can't be recovered if you clear your browser data. Create a full account later to save your progress forever!
+              </p>
+            </div>
+            
+            {/* Buttons */}
+            <div className="space-y-3">
+              <button
+                onClick={handleGuestLogin}
+                className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all"
+              >
+                Start Playing
+              </button>
+              <button
+                onClick={() => {
+                  setShowGuestModal(false);
+                  setGuestUsername('');
+                }}
+                className="w-full text-gray-600 dark:text-gray-400 py-2 text-sm hover:underline"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Account Upgrade Modal */}
+      {showUpgradeModal && currentUser?.isAnonymous && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-md w-full p-8">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="text-6xl mb-4">🔐</div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Upgrade Your Account</h3>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">Create an email account to save your progress forever</p>
+            </div>
+            
+            {/* Benefits */}
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-xl p-4 mb-6">
+              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200 mb-2">With an email account:</p>
+              <ul className="text-sm text-emerald-700 dark:text-emerald-300 space-y-1">
+                <li>✅ Access from any device</li>
+                <li>✅ Never lose your progress</li>
+                <li>✅ Recover account if needed</li>
+                <li>✅ Get notifications</li>
+              </ul>
+            </div>
+            
+            {/* Inputs */}
+            <div className="space-y-4 mb-6">
+              <div>
+                <input
+                  type="email"
+                  placeholder="Email (e.g., user@gmail.com)"
+                  value={upgradeEmail}
+                  onChange={(e) => setUpgradeEmail(e.target.value)}
+                  className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none transition-colors"
+                />
+              </div>
+              <div>
+                <input
+                  type="password"
+                  placeholder="Password (min 6 characters)"
+                  value={upgradePassword}
+                  onChange={(e) => setUpgradePassword(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleUpgradeAccount()}
+                  className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none transition-colors"
+                />
+              </div>
+            </div>
+            
+            {/* Buttons */}
+            <div className="space-y-3">
+              <button
+                onClick={handleUpgradeAccount}
+                className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all"
+              >
+                Upgrade Account
+              </button>
+              <button
+                onClick={() => {
+                  setShowUpgradeModal(false);
+                  setUpgradeEmail('');
+                  setUpgradePassword('');
+                }}
+                className="w-full text-gray-600 dark:text-gray-400 py-2 text-sm hover:underline"
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upgrade Prompt (at milestones) */}
+      {showUpgradePrompt && currentUser?.isAnonymous && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
+          <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl shadow-2xl max-w-md w-full p-8">
+            {/* Close button */}
+            <button
+              onClick={() => setShowUpgradePrompt(false)}
+              className="absolute top-4 right-4 text-white/80 hover:text-white text-2xl font-bold"
+            >
+              ×
+            </button>
+            
+            {/* Content */}
+            <div className="text-center text-white mb-6">
+              <div className="text-7xl mb-4">🎉</div>
+              <h3 className="text-3xl font-bold mb-2">Amazing Progress!</h3>
+              <p className="text-xl mb-4">You've earned {currentUser.totalPoints} points!</p>
+              <p className="text-amber-100">Want to save your progress forever?</p>
+            </div>
+            
+            {/* Benefits */}
+            <div className="bg-white/10 backdrop-blur rounded-2xl p-4 mb-6">
+              <p className="text-white font-semibold mb-2">Create an account to:</p>
+              <ul className="text-amber-100 space-y-1 text-sm">
+                <li>✅ Access from any device</li>
+                <li>✅ Never lose your achievements</li>
+                <li>✅ Get daily reminders</li>
+                <li>✅ Secure your leaderboard rank</li>
+              </ul>
+            </div>
+            
+            {/* Buttons */}
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setShowUpgradePrompt(false);
+                  setShowUpgradeModal(true);
+                }}
+                className="w-full bg-white text-orange-600 py-3 rounded-xl font-bold hover:bg-amber-50 transition-colors shadow-lg"
+              >
+                Upgrade Now 🚀
+              </button>
+              <button
+                onClick={() => setShowUpgradePrompt(false)}
+                className="w-full text-white/90 py-2 text-sm hover:text-white transition-colors"
+              >
+                Continue as Guest
+              </button>
             </div>
           </div>
         </div>
