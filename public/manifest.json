@@ -1,16 +1,12 @@
 {
-  "name": "Zikri - Islamic Remembrance",
+  "name": "Zikri - Islamic Remembrance Game",
   "short_name": "Zikri",
-  "description": "Remember Allah, Earn Rewards. Daily Azkar gamification app with achievements, streaks, and leaderboards.",
+  "description": "Remember Allah through an engaging dhikr game. Earn rewards, track progress, and build your spiritual practice.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f766e",
+  "background_color": "#047857",
   "theme_color": "#14b8a6",
-  "orientation": "portrait",
-  "scope": "/",
-  "categories": ["lifestyle", "education", "productivity"],
-  "lang": "en-US",
-  "dir": "ltr",
+  "orientation": "any",
   "icons": [
     {
       "src": "/logo-192.png",
@@ -25,40 +21,21 @@
       "purpose": "any maskable"
     }
   ],
+  "categories": ["education", "lifestyle", "health"],
+  "lang": "en",
+  "dir": "ltr",
   "screenshots": [
     {
-      "src": "/screenshot-1.png",
-      "sizes": "1080x1920",
+      "src": "/screenshot-wide.png",
+      "sizes": "1920x1080",
       "type": "image/png",
-      "label": "Zikri Main Game Screen"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Start Zikr",
-      "short_name": "Play",
-      "description": "Start your daily Zikr session",
-      "url": "/?action=play",
-      "icons": [
-        {
-          "src": "/icon-play.png",
-          "sizes": "96x96"
-        }
-      ]
+      "form_factor": "wide"
     },
     {
-      "name": "View Achievements",
-      "short_name": "Badges",
-      "description": "View your unlocked achievements",
-      "url": "/?action=achievements",
-      "icons": [
-        {
-          "src": "/icon-trophy.png",
-          "sizes": "96x96"
-        }
-      ]
+      "src": "/screenshot-narrow.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
     }
-  ],
-  "prefer_related_applications": false
+  ]
 }
-
