@@ -3,8 +3,9 @@ import { Trophy, Heart, Pause, Play, Lock, Unlock, LogOut, User, Award, Trending
 
 // Firebase imports
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from './firebase-config';
-import { registerUser, loginUser, logoutUser, signInAsGuest, upgradeAnonymousAccount } from './firebase-auth';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { auth, db } from './firebase-config';
+import { registerUser, loginUser, logoutUser } from './firebase-auth';
 import { getUserData, saveGameProgress, getLeaderboard, incrementPhraseCount } from './firebase-data';
 
 // Notification imports
@@ -1031,9 +1032,6 @@ const ZikrGame = () => {
     
     try {
       // Query Firestore to check if username exists (case-sensitive)
-      const { collection, query, where, getDocs } = await import('firebase/firestore');
-      const { db } = await import('./firebase-config');
-      
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('username', '==', usernameToCheck));
       const querySnapshot = await getDocs(q);
