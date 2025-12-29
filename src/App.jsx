@@ -1760,9 +1760,9 @@ const ZikrGame = () => {
   const getSpeed = () => {
     if (!gameStartTimeRef.current) return 0.3;
     
-    // Initial Speed Boost - EXTREME SPEED for first 8 seconds!
+    // Initial Speed Boost - ULTRA FAST for first 8 seconds!
     if (isSpeedBoosted) {
-      return 1.8; // EXTREME FAST - 9x faster than normal! VERY NOTICEABLE!
+      return 4.0; // ULTRA FAST - 20x faster than normal! IMPOSSIBLE TO MISS!
     }
     
     // Asma ul Husna Mode: Fixed speed at Level 3 (0.3)
@@ -2000,7 +2000,7 @@ const ZikrGame = () => {
         setIsSpeedBoosted(false);
         console.log('[SPEED BOOST] Ended - returning to normal speed');
       }, 8000); // 8 seconds
-      console.log('[SPEED BOOST] Started - EXTREME SPEED (1.8x) for 8 seconds! Watch closely!');
+      console.log('[SPEED BOOST] Started - ULTRA SPEED (4.0x - 20x faster!) for 8 seconds! WATCH OUT!');
       
       setSessionScore(0);
       sessionScoreRef.current = 0;
@@ -2454,11 +2454,16 @@ const ZikrGame = () => {
         const currentSpeed = getSpeed();
         const elapsed = (Date.now() - gameStartTimeRef.current) / 1000;
         
-        // After speed reaches 0.4 (at ~80 seconds), start increasing frequency
+        // SPEED BOOST: Spawn more phrases during first 8 seconds!
         let targetPhrases = 2; // Base: 2-3 phrases
         let spawnProbability = 0.7; // Base probability
         
-        if (currentSpeed >= 0.4 && (gameModeRef.current === 'focus' || gameModeRef.current === 'tasbih')) {
+        if (elapsed < 8) {
+          // During speed boost: More phrases, higher spawn rate!
+          targetPhrases = 4; // More phrases on screen
+          spawnProbability = 0.95; // Almost always spawn
+          console.log('[SPEED BOOST] High spawn frequency active');
+        } else if (currentSpeed >= 0.4 && (gameModeRef.current === 'focus' || gameModeRef.current === 'tasbih')) {
           // Speed maxed out - now increase frequency!
           const frequencyBoost = Math.floor((elapsed - 80) / 30); // Increase every 30s after speed caps
           targetPhrases = Math.min(2 + frequencyBoost, 4); // Cap at 4 phrases max
