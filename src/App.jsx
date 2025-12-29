@@ -910,22 +910,6 @@ const ZikrGame = () => {
     };
   }, []);
 
-  // Show upgrade prompt for guest users at milestones
-  useEffect(() => {
-    if (!currentUser || !currentUser.isAnonymous) return;
-    
-    const points = currentUser.totalPoints || 0;
-    
-    // Show upgrade prompt at 1000, 5000, or 10000 points
-    if (points >= 1000 && points < 1100 && !showUpgradePrompt) {
-      setShowUpgradePrompt(true);
-    } else if (points >= 5000 && points < 5100 && !showUpgradePrompt) {
-      setShowUpgradePrompt(true);
-    } else if (points >= 10000 && points < 10100 && !showUpgradePrompt) {
-      setShowUpgradePrompt(true);
-    }
-  }, [currentUser, showUpgradePrompt]);
-
   // Sync totalPoints when currentUser updates
   useEffect(() => {
     if (currentUser && currentUser.totalPoints !== undefined) {
@@ -3609,44 +3593,6 @@ const ZikrGame = () => {
                 <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 font-medium">
                   {currentUser?.username || currentUser?.displayName || 'User'}
                 </div>
-              </div>
-              
-              {/* Account Type & Upgrade */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Account Type</label>
-                {currentUser?.isAnonymous ? (
-                  <div className="space-y-3">
-                    <div className="w-full px-4 py-3 bg-amber-50 border-2 border-amber-200 rounded-xl">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-amber-800 font-semibold">👤 Guest Account</p>
-                          <p className="text-xs text-amber-600 mt-1">Can't be recovered if browser data is cleared</p>
-                        </div>
-                        <span className="text-2xl">⚠️</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setShowUpgradeModal(true)}
-                      className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex items-center justify-center gap-2"
-                    >
-                      <Crown size={20} />
-                      Upgrade to Email Account
-                    </button>
-                    <p className="text-xs text-center text-gray-600">
-                      💾 Save your progress forever & access from any device
-                    </p>
-                  </div>
-                ) : (
-                  <div className="w-full px-4 py-3 bg-emerald-50 border-2 border-emerald-200 rounded-xl">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-emerald-800 font-semibold">📧 Email Account</p>
-                        <p className="text-xs text-emerald-600 mt-1">{currentUser?.email || 'Permanently saved'}</p>
-                      </div>
-                      <span className="text-2xl">✅</span>
-                    </div>
-                  </div>
-                )}
               </div>
               
               {/* Gender Selection */}
