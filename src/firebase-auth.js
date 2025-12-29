@@ -22,8 +22,13 @@ export const registerUser = async (username, password) => {
     // This ensures each username maps to a unique Firebase auth account
     const email = `${username.toLowerCase().replace(/[^a-z0-9]/g, '')}@zikrapp.internal`;
     
+    console.log('[SIGNUP] Creating account for username:', username);
+    console.log('[SIGNUP] Internal email:', email);
+    
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
+    
+    console.log('[SIGNUP] Firebase Auth user created:', user.uid);
     
     // Create user document with ACTUAL username (case-sensitive)
     await setDoc(doc(db, 'users', user.uid), {
@@ -42,6 +47,8 @@ export const registerUser = async (username, password) => {
       createdAt: new Date().toISOString()
     });
     
+    console.log('[SIGNUP] Firestore user document created');
+    
     return { success: true, userId: user.uid, username };
   } catch (error) {
     console.error('Registration error:', error);
@@ -58,25 +65,40 @@ export const registerUser = async (username, password) => {
 // Login user with USERNAME (case-sensitive)
 export const loginUser = async (username, password) => {
   try {
+    console.log('[LOGIN] Attempting login for username:', username);
+    
     // Find user by username (case-sensitive)
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where('username', '==', username));
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
-      return { success: false, error: 'Invalid username or password' };
+      console.log('[LOGIN] ❌ Username not found in Firestore:', username);
+      return { 
+        success: false, 
+        error: `Username "${username}" not found.\n\nPlease check:\n• Username is spelled correctly\n• Username is case-sensitive (${username} ≠ ${username.toLowerCase()})\n• You have signed up first\n\nNeed an account? Click "First time user? Sign Up Here!"` 
+      };
     }
+    
+    console.log('[LOGIN] ✓ Username found in Firestore');
     
     // Get the user's internal email
     const userDoc = querySnapshot.docs[0];
     const email = `${username.toLowerCase().replace(/[^a-z0-9]/g, '')}@zikrapp.internal`;
     
+    console.log('[LOGIN] Constructed internal email:', email);
+    console.log('[LOGIN] Attempting Firebase Auth signin...');
+    
     // Sign in with Firebase Auth
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
+    console.log('[LOGIN] ✓ Firebase Auth successful');
+    
     // Get user data
     const userData = userDoc.data();
+    
+    console.log('[LOGIN] ✓ Login successful for:', username);
     
     return { 
       success: true, 
@@ -84,11 +106,33 @@ export const loginUser = async (username, password) => {
       userData: userData 
     };
   } catch (error) {
-    console.error('Login error:', error);
-    if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-      return { success: false, error: 'Invalid username or password' };
+    console.error('[LOGIN] ❌ Login error:', error);
+    console.error('[LOGIN] Error code:', error.code);
+    console.error('[LOGIN] Error message:', error.message);
+    
+    if (error.code === 'auth/wrong-password') {
+      return { 
+        success: false, 
+        error: `Incorrect password for username "${username}".\n\nPlease check your password and try again.` 
+      };
     }
-    return { success: false, error: 'Invalid username or password' };
+    if (error.code === 'auth/invalid-credential') {
+      return { 
+        success: false, 
+        error: `Invalid credentials.\n\nPossible issues:\n• Wrong password\n• Account created with old system (not compatible)\n\nTry signing up again with "First time user? Sign Up Here!"` 
+      };
+    }
+    if (error.code === 'auth/user-not-found') {
+      return { 
+        success: false, 
+        error: `Account not found in Firebase Auth.\n\nPlease sign up first:\nClick "First time user? Sign Up Here!"` 
+      };
+    }
+    
+    return { 
+      success: false, 
+      error: `Login failed: ${error.message}\n\nIf you're a new user, click "First time user? Sign Up Here!"` 
+    };
   }
 };
 
