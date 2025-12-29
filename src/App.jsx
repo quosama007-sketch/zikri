@@ -4,7 +4,7 @@ import { Trophy, Heart, Pause, Play, Lock, Unlock, LogOut, User, Award, Trending
 // Firebase imports
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase-config';
-import { registerUser, loginUser, logoutUser } from './firebase-auth';
+import { registerUser, loginUser, logoutUser, signInAsGuest, upgradeAnonymousAccount } from './firebase-auth';
 import { getUserData, saveGameProgress, getLeaderboard, incrementPhraseCount } from './firebase-data';
 
 // Notification imports
@@ -651,6 +651,8 @@ const ZikrGame = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+  const [usernameAvailable, setUsernameAvailable] = useState(null); // null = not checked, true = available, false = taken
+  const [checkingUsername, setCheckingUsername] = useState(false);
 
   // Game state
   const [screen, setScreen] = useState('menu'); // menu, game, stats, profile, leaderboard, achievements, mode-select, tasbih-setup
@@ -705,6 +707,14 @@ const ZikrGame = () => {
   const [darkMode, setDarkMode] = useState(false); // Dark mode toggle
   const [notificationSettings, setNotificationSettings] = useState(DEFAULT_NOTIFICATION_SETTINGS); // Notification settings
   const [notificationPermission, setNotificationPermission] = useState('default'); // Notification permission status
+  
+  // Streak Shield Notification
+  const [showStreakShieldUsed, setShowStreakShieldUsed] = useState(false);
+  const [shieldUsageInfo, setShieldUsageInfo] = useState({ oldCount: 0, newCount: 0 });
+  
+  // Initial Speed Boost
+  const [isSpeedBoosted, setIsSpeedBoosted] = useState(false);
+  const speedBoostTimerRef = useRef(null);
   
   // Virtue One-Liners System
   const [showVirtuePopup, setShowVirtuePopup] = useState(false);
@@ -899,6 +909,22 @@ const ZikrGame = () => {
     };
   }, []);
 
+  // Show upgrade prompt for guest users at milestones
+  useEffect(() => {
+    if (!currentUser || !currentUser.isAnonymous) return;
+    
+    const points = currentUser.totalPoints || 0;
+    
+    // Show upgrade prompt at 1000, 5000, or 10000 points
+    if (points >= 1000 && points < 1100 && !showUpgradePrompt) {
+      setShowUpgradePrompt(true);
+    } else if (points >= 5000 && points < 5100 && !showUpgradePrompt) {
+      setShowUpgradePrompt(true);
+    } else if (points >= 10000 && points < 10100 && !showUpgradePrompt) {
+      setShowUpgradePrompt(true);
+    }
+  }, [currentUser, showUpgradePrompt]);
+
   // Sync totalPoints when currentUser updates
   useEffect(() => {
     if (currentUser && currentUser.totalPoints !== undefined) {
@@ -913,11 +939,23 @@ const ZikrGame = () => {
       return;
     }
 
+    // Username validation (case-sensitive, any characters allowed)
+    if (username.trim().length < 3) {
+      alert('⚠️ Username Too Short\n\nUsername must be at least 3 characters long.');
+      return;
+    }
+
+    // Password length validation for signup
+    if (isSignUp && password.length < 6) {
+      alert('⚠️ Password Too Short\n\nPassword must be at least 6 characters long.');
+      return;
+    }
+
     let result;
     if (isSignUp) {
-      result = await registerUser(username, password);
+      result = await registerUser(username, password); // Case-sensitive username
     } else {
-      result = await loginUser(username, password);
+      result = await loginUser(username, password); // Case-sensitive username
     }
 
     if (result.success) {
@@ -931,11 +969,45 @@ const ZikrGame = () => {
       setIsAuthenticated(true);
       setShowAuth(false);
       setTotalPoints(userData.totalPoints || 0);
+      setUsername(''); // Clear username
+      setPassword(''); // Clear password
+      setUsernameAvailable(null); // Reset check
       
       console.log('✅ Logged in successfully');
     } else {
-      alert(result.error || 'Authentication failed');
+      // Convert Firebase error codes to friendly messages
+      const friendlyError = getFriendlyErrorMessage(result.error);
+      alert(friendlyError);
     }
+  };
+
+  // Convert Firebase error codes to user-friendly messages
+  const getFriendlyErrorMessage = (error) => {
+    if (!error) return 'Authentication failed. Please try again.';
+    
+    const errorString = error.toString().toLowerCase();
+    
+    if (errorString.includes('username') && errorString.includes('exist')) {
+      return `❌ Username Already Taken\n\nThe username "${username}" is already taken.\n\nPlease choose a different username.`;
+    }
+    if (errorString.includes('user-not-found') || errorString.includes('invalid')) {
+      return '❌ Invalid Credentials\n\nUsername or password is incorrect.\n\nPlease check and try again.';
+    }
+    if (errorString.includes('wrong-password')) {
+      return '❌ Incorrect Password\n\nThe password you entered is incorrect.\n\nPlease try again.';
+    }
+    if (errorString.includes('weak-password')) {
+      return '⚠️ Weak Password\n\nPassword must be at least 6 characters long.\n\nPlease choose a stronger password.';
+    }
+    if (errorString.includes('too-many-requests')) {
+      return '⚠️ Too Many Attempts\n\nToo many failed login attempts.\n\nPlease try again in a few minutes.';
+    }
+    if (errorString.includes('network')) {
+      return '📡 Network Error\n\nPlease check your internet connection and try again.';
+    }
+    
+    // Default friendly message
+    return '❌ Authentication Error\n\nSomething went wrong. Please try again.\n\nIf the problem persists, contact support.';
   };
 
   const handleLogout = async () => {
@@ -945,6 +1017,33 @@ const ZikrGame = () => {
       setIsAuthenticated(false);
       setShowAuth(true);
       setScreen('menu');
+    }
+  };
+  
+  // Check username availability (real-time)
+  const checkUsernameAvailability = async (usernameToCheck) => {
+    if (!usernameToCheck || usernameToCheck.length < 3) {
+      setUsernameAvailable(null);
+      return;
+    }
+    
+    setCheckingUsername(true);
+    
+    try {
+      // Query Firestore to check if username exists (case-sensitive)
+      const { collection, query, where, getDocs } = await import('firebase/firestore');
+      const { db } = await import('./firebase-config');
+      
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('username', '==', usernameToCheck));
+      const querySnapshot = await getDocs(q);
+      
+      setUsernameAvailable(querySnapshot.empty); // true if available, false if taken
+    } catch (error) {
+      console.error('Error checking username:', error);
+      setUsernameAvailable(null);
+    } finally {
+      setCheckingUsername(false);
     }
   };
   
@@ -1114,8 +1213,13 @@ const ZikrGame = () => {
           
           console.log(`[FREEZE] Auto-used ${missedDays} token(s) to protect streak`);
           
-          // Show notification to user
-          setTokenUsedMessage(`You missed ${missedDays} day(s)!\nStreak Freeze used 🛡️\nYour ${newStreak - 1}-day streak is safe!\nTokens remaining: ${remainingTokens - missedDays}/10`);
+          // Show detailed notification with shield count
+          const oldShieldCount = remainingTokens;
+          const newShieldCount = remainingTokens - missedDays;
+          
+          setShieldUsageInfo({ oldCount: oldShieldCount, newCount: newShieldCount });
+          setTokenUsedMessage(`🛡️ Streak Shield Used!\n\nYou missed ${missedDays} day(s) but your ${newStreak - 1}-day streak is protected!\n\nShields: ${oldShieldCount} → ${newShieldCount}\n\nKeep your streak alive! 🔥`);
+          setShowStreakShieldUsed(true);
           setShowTokenUsed(true);
         } else {
           // Not enough tokens - streak breaks
@@ -1674,6 +1778,11 @@ const ZikrGame = () => {
   const getSpeed = () => {
     if (!gameStartTimeRef.current) return 0.3;
     
+    // Initial Speed Boost - Very Fast for first 8 seconds
+    if (isSpeedBoosted) {
+      return 0.7; // Very Fast speed!
+    }
+    
     // Asma ul Husna Mode: Fixed speed at Level 3 (0.3)
     if (gameModeRef.current === 'asma') {
       return 0.3; // Fixed speed at 0.3 (slower, more contemplative)
@@ -1681,7 +1790,7 @@ const ZikrGame = () => {
     
     // Focus and Tasbih Modes: Gradual speed increase, then frequency increase
     const elapsed = (Date.now() - gameStartTimeRef.current) / 1000; // seconds
-    const baseSpeed = 0.2; // Starting speed
+    const baseSpeed = 0.2; // Starting speed (Normal/Medium)
     const speedIncrease = Math.floor(elapsed / 40) * 0.05; // Gradual increase every 40 seconds
     const maxSpeed = 0.4; // Cap speed at 0.4 (after this, increase frequency instead)
     return Math.min(baseSpeed + speedIncrease, maxSpeed);
@@ -1899,6 +2008,18 @@ const ZikrGame = () => {
       previouslyUnlockedRef.current = new Set(currentUnlocked);
       
       setScreen('game');
+      
+      // Initial Speed Boost - Start at Very Fast for 8 seconds
+      setIsSpeedBoosted(true);
+      if (speedBoostTimerRef.current) {
+        clearTimeout(speedBoostTimerRef.current);
+      }
+      speedBoostTimerRef.current = setTimeout(() => {
+        setIsSpeedBoosted(false);
+        console.log('[SPEED BOOST] Ended - returning to normal speed');
+      }, 8000); // 8 seconds
+      console.log('[SPEED BOOST] Started - Very Fast for 8 seconds');
+      
       setSessionScore(0);
       sessionScoreRef.current = 0;
       setAsmaSessionScore(0); // Reset Asma session score
@@ -2741,32 +2862,104 @@ const ZikrGame = () => {
           </div>
 
           <div className="space-y-4">
-            <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none transition-colors"
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none transition-colors"
-            />
+            {/* Username Input with Availability Check */}
+            <div>
+              <input
+                type="text"
+                placeholder="Username (e.g., Ahmed, Amir123)"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  // Check availability in real-time for signup
+                  if (isSignUp && e.target.value.length >= 3) {
+                    checkUsernameAvailability(e.target.value);
+                  } else {
+                    setUsernameAvailable(null);
+                  }
+                }}
+                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none transition-colors"
+              />
+              {/* Username availability indicator */}
+              {isSignUp && username.length >= 3 && (
+                <p className={`text-xs mt-1 px-2 ${
+                  checkingUsername ? 'text-gray-500' : 
+                  usernameAvailable === true ? 'text-green-600 dark:text-green-400' : 
+                  usernameAvailable === false ? 'text-red-600 dark:text-red-400' : 
+                  'text-gray-500'
+                }`}>
+                  {checkingUsername ? '⏳ Checking availability...' : 
+                   usernameAvailable === true ? '✅ Username available!' : 
+                   usernameAvailable === false ? `❌ Username "${username}" is already taken` : 
+                   '👤 Enter a unique username (case-sensitive)'}
+                </p>
+              )}
+              {!isSignUp && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 px-2">
+                  👤 Usernames are case-sensitive
+                </p>
+              )}
+            </div>
+            
+            {/* Password Input */}
+            <div>
+              <input
+                type="password"
+                placeholder="Password (min 6 characters)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:border-emerald-500 dark:focus:border-emerald-400 focus:outline-none transition-colors"
+              />
+              {isSignUp && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 px-2">
+                  🔒 Password must be at least 6 characters
+                </p>
+              )}
+            </div>
+            
+            {/* Login/Signup Button */}
             <button
               onClick={handleAuth}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all"
+              disabled={isSignUp && usernameAvailable === false}
+              className={`w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all ${
+                isSignUp && usernameAvailable === false ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
               {isSignUp ? 'Sign Up' : 'Login'}
             </button>
-            <button
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="w-full text-emerald-600 py-2 text-sm hover:underline"
-            >
-              {isSignUp ? 'Already have an account? Login' : 'Need an account? Sign Up'}
-            </button>
+            
+            {/* Toggle between Login/Signup */}
+            {!isSignUp ? (
+              /* Login screen - Show prominent "First time user?" link */
+              <div className="text-center space-y-2">
+                <button
+                  onClick={() => {
+                    setIsSignUp(true);
+                    setUsername('');
+                    setPassword('');
+                    setUsernameAvailable(null);
+                  }}
+                  className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all"
+                >
+                  🆕 First time user? Sign Up Here!
+                </button>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  New to Zikri? Create an account to start earning rewards!
+                </p>
+              </div>
+            ) : (
+              /* Signup screen - Show "Already have account?" */
+              <button
+                onClick={() => {
+                  setIsSignUp(false);
+                  setUsername('');
+                  setPassword('');
+                  setUsernameAvailable(null);
+                }}
+                className="w-full text-emerald-600 dark:text-emerald-400 py-2 text-sm hover:underline"
+              >
+                Already have an account? Login
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -3418,6 +3611,44 @@ const ZikrGame = () => {
                 <div className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 font-medium">
                   {currentUser?.username || currentUser?.displayName || 'User'}
                 </div>
+              </div>
+              
+              {/* Account Type & Upgrade */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Account Type</label>
+                {currentUser?.isAnonymous ? (
+                  <div className="space-y-3">
+                    <div className="w-full px-4 py-3 bg-amber-50 border-2 border-amber-200 rounded-xl">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-amber-800 font-semibold">👤 Guest Account</p>
+                          <p className="text-xs text-amber-600 mt-1">Can't be recovered if browser data is cleared</p>
+                        </div>
+                        <span className="text-2xl">⚠️</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Crown size={20} />
+                      Upgrade to Email Account
+                    </button>
+                    <p className="text-xs text-center text-gray-600">
+                      💾 Save your progress forever & access from any device
+                    </p>
+                  </div>
+                ) : (
+                  <div className="w-full px-4 py-3 bg-emerald-50 border-2 border-emerald-200 rounded-xl">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-emerald-800 font-semibold">📧 Email Account</p>
+                        <p className="text-xs text-emerald-600 mt-1">{currentUser?.email || 'Permanently saved'}</p>
+                      </div>
+                      <span className="text-2xl">✅</span>
+                    </div>
+                  </div>
+                )}
               </div>
               
               {/* Gender Selection */}
@@ -5271,6 +5502,53 @@ const ZikrGame = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Streak Shield Used Notification */}
+      {showStreakShieldUsed && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-md w-full p-8">
+            {/* Icon */}
+            <div className="text-center mb-6">
+              <div className="text-7xl mb-4">🛡️</div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Streak Shield Used!</h3>
+              <p className="text-gray-600 dark:text-gray-400">Your streak is protected</p>
+            </div>
+            
+            {/* Shield Count Display */}
+            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-2 border-emerald-200 dark:border-emerald-700 rounded-xl p-6 mb-6">
+              <div className="text-center">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Shields Remaining</p>
+                <div className="flex items-center justify-center gap-4">
+                  <span className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{shieldUsageInfo.oldCount}</span>
+                  <span className="text-2xl text-gray-400">→</span>
+                  <span className="text-3xl font-bold text-teal-600 dark:text-teal-400">{shieldUsageInfo.newCount}</span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Earn more shields by collecting points!
+                </p>
+              </div>
+            </div>
+            
+            {/* Message */}
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4 mb-6">
+              <p className="text-sm text-amber-800 dark:text-amber-200 text-center">
+                {tokenUsedMessage}
+              </p>
+            </div>
+            
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                setShowStreakShieldUsed(false);
+                setShowTokenUsed(false);
+              }}
+              className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all"
+            >
+              Continue Playing 🔥
+            </button>
           </div>
         </div>
       )}
