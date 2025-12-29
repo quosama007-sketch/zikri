@@ -1760,9 +1760,9 @@ const ZikrGame = () => {
   const getSpeed = () => {
     if (!gameStartTimeRef.current) return 0.3;
     
-    // Initial Speed Boost - Very Fast for first 8 seconds
+    // Initial Speed Boost - EXTREME SPEED for first 8 seconds!
     if (isSpeedBoosted) {
-      return 0.7; // Very Fast speed!
+      return 1.8; // EXTREME FAST - 9x faster than normal! VERY NOTICEABLE!
     }
     
     // Asma ul Husna Mode: Fixed speed at Level 3 (0.3)
@@ -2000,7 +2000,7 @@ const ZikrGame = () => {
         setIsSpeedBoosted(false);
         console.log('[SPEED BOOST] Ended - returning to normal speed');
       }, 8000); // 8 seconds
-      console.log('[SPEED BOOST] Started - Very Fast for 8 seconds');
+      console.log('[SPEED BOOST] Started - EXTREME SPEED (1.8x) for 8 seconds! Watch closely!');
       
       setSessionScore(0);
       sessionScoreRef.current = 0;
