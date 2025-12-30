@@ -2946,9 +2946,6 @@ const ZikrGame = () => {
                 >
                   🆕 First time user? Sign Up Here!
                 </button>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  New to Zikri? Create an account to start earning rewards!
-                </p>
               </div>
             ) : (
               /* Signup screen - Show "Already have account?" */
