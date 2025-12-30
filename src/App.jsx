@@ -713,9 +713,9 @@ const ZikrGame = () => {
   const [showStreakShieldUsed, setShowStreakShieldUsed] = useState(false);
   const [shieldUsageInfo, setShieldUsageInfo] = useState({ oldCount: 0, newCount: 0 });
   
-  // Initial Speed Boost
+  // Initial Speed Boost (First 7 taps)
   const [isSpeedBoosted, setIsSpeedBoosted] = useState(false);
-  const speedBoostTimerRef = useRef(null);
+  const speedBoostTapCount = useRef(0); // Track taps for speed boost
   
   // Virtue One-Liners System
   const [showVirtuePopup, setShowVirtuePopup] = useState(false);
@@ -1867,14 +1867,14 @@ const ZikrGame = () => {
     // Detect if mobile device
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
     
-    // Initial Speed Boost - Different speeds for mobile vs desktop
+    // Initial Speed Boost - Different speeds for mobile vs desktop (first 7 taps)
     if (isSpeedBoosted) {
       const boostSpeed = isMobile ? 2.5 : 4.0; // Lower speed for mobile devices
       
-      // Log speed every 500ms during boost
+      // Log speed periodically during boost
       const elapsed = Date.now() - gameStartTimeRef.current;
       if (elapsed % 500 < 50) { // Log roughly every 500ms
-        console.log(`[SPEED DEBUG] Mobile: ${isMobile}, Speed: ${boostSpeed}, Elapsed: ${(elapsed/1000).toFixed(1)}s, isSpeedBoosted: ${isSpeedBoosted}`);
+        console.log(`[SPEED DEBUG] Mobile: ${isMobile}, Speed: ${boostSpeed}, Taps: ${speedBoostTapCount.current}/7, Active: ${isSpeedBoosted}`);
       }
       
       return boostSpeed;
@@ -2106,22 +2106,17 @@ const ZikrGame = () => {
       
       setScreen('game');
       
-      // Initial Speed Boost - Start at Very Fast for 8 seconds
+      // Initial Speed Boost - First 7 phrase taps
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
       const boostSpeed = isMobile ? 2.5 : 4.0;
       
       setIsSpeedBoosted(true);
-      if (speedBoostTimerRef.current) {
-        clearTimeout(speedBoostTimerRef.current);
-      }
-      speedBoostTimerRef.current = setTimeout(() => {
-        setIsSpeedBoosted(false);
-        console.log('[SPEED BOOST] Ended - returning to normal speed');
-      }, 8000); // 8 seconds
+      speedBoostTapCount.current = 0; // Reset tap counter
       
-      console.log(`[SPEED BOOST] Started - ${isMobile ? 'MOBILE' : 'DESKTOP'} SPEED (${boostSpeed}x) for 8 seconds!`);
+      console.log(`[SPEED BOOST] Started - ${isMobile ? 'MOBILE' : 'DESKTOP'} SPEED (${boostSpeed}x) for first 7 taps!`);
       console.log(`[SPEED BOOST] Device: ${isMobile ? 'Mobile' : 'Desktop'}, UserAgent: ${navigator.userAgent.substring(0, 50)}...`);
-      console.log(`[SPEED BOOST] Window width: ${window.innerWidth}px, isSpeedBoosted: ${true}`);
+      console.log(`[SPEED BOOST] Window width: ${window.innerWidth}px, Tap-based boost active`);
+      console.log(`[SPEED BOOST] Will return to normal speed after 7th phrase tap (~30 seconds)`);
       
       setSessionScore(0);
       sessionScoreRef.current = 0;
@@ -2618,6 +2613,18 @@ const ZikrGame = () => {
   // Handle phrase tap
   const handlePhraseTap = (event, phraseId, points, phraseDataId, isNewlyUnlocked = false) => {
     console.log(`[TAP] gameMode: ${gameMode}, phraseId: ${phraseId}, points: ${points}, isNewlyUnlocked: ${isNewlyUnlocked}`);
+    
+    // Speed Boost: Track taps and disable after 7
+    if (isSpeedBoosted) {
+      speedBoostTapCount.current += 1;
+      console.log(`[SPEED BOOST] Tap ${speedBoostTapCount.current}/7`);
+      
+      if (speedBoostTapCount.current >= 7) {
+        setIsSpeedBoosted(false);
+        console.log('[SPEED BOOST] 🎯 7 taps reached! Returning to normal speed');
+        console.log('[SPEED BOOST] Boost duration: ~30 seconds');
+      }
+    }
     
     // Get tap position for animation
     const rect = event.currentTarget.getBoundingClientRect();
