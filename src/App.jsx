@@ -1760,9 +1760,20 @@ const ZikrGame = () => {
   const getSpeed = () => {
     if (!gameStartTimeRef.current) return 0.3;
     
-    // Initial Speed Boost - ULTRA FAST for first 8 seconds!
+    // Detect if mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+    
+    // Initial Speed Boost - Different speeds for mobile vs desktop
     if (isSpeedBoosted) {
-      return 4.0; // ULTRA FAST - 20x faster than normal! IMPOSSIBLE TO MISS!
+      const boostSpeed = isMobile ? 2.5 : 4.0; // Lower speed for mobile devices
+      
+      // Log speed every 500ms during boost
+      const elapsed = Date.now() - gameStartTimeRef.current;
+      if (elapsed % 500 < 50) { // Log roughly every 500ms
+        console.log(`[SPEED DEBUG] Mobile: ${isMobile}, Speed: ${boostSpeed}, Elapsed: ${(elapsed/1000).toFixed(1)}s, isSpeedBoosted: ${isSpeedBoosted}`);
+      }
+      
+      return boostSpeed;
     }
     
     // Asma ul Husna Mode: Fixed speed at Level 3 (0.3)
@@ -1992,6 +2003,9 @@ const ZikrGame = () => {
       setScreen('game');
       
       // Initial Speed Boost - Start at Very Fast for 8 seconds
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+      const boostSpeed = isMobile ? 2.5 : 4.0;
+      
       setIsSpeedBoosted(true);
       if (speedBoostTimerRef.current) {
         clearTimeout(speedBoostTimerRef.current);
@@ -2000,7 +2014,10 @@ const ZikrGame = () => {
         setIsSpeedBoosted(false);
         console.log('[SPEED BOOST] Ended - returning to normal speed');
       }, 8000); // 8 seconds
-      console.log('[SPEED BOOST] Started - ULTRA SPEED (4.0x - 20x faster!) for 8 seconds! WATCH OUT!');
+      
+      console.log(`[SPEED BOOST] Started - ${isMobile ? 'MOBILE' : 'DESKTOP'} SPEED (${boostSpeed}x) for 8 seconds!`);
+      console.log(`[SPEED BOOST] Device: ${isMobile ? 'Mobile' : 'Desktop'}, UserAgent: ${navigator.userAgent.substring(0, 50)}...`);
+      console.log(`[SPEED BOOST] Window width: ${window.innerWidth}px, isSpeedBoosted: ${true}`);
       
       setSessionScore(0);
       sessionScoreRef.current = 0;
