@@ -3242,9 +3242,11 @@ const ZikrGame = () => {
             {/* Tasbih Mode - Locked until all 27 phrases unlocked */}
             <div 
               onClick={() => {
-               
+                if (getUnlockedPhraseIds(totalPoints).length >= 27) {
                   setScreen('tasbih-setup');
-
+                } else {
+                  alert(`Tasbih Mode unlocks when ALL 27 phrases are unlocked!\nCurrent progress: ${getUnlockedPhraseIds(totalPoints).length}/27\n\nComplete Focus Mode to unlock!`);
+                }
               }}
               className={`bg-white rounded-3xl shadow-xl p-8 cursor-pointer hover:shadow-2xl hover:scale-105 transition-all border-4 ${
                 getUnlockedPhraseIds(totalPoints).length >= 27 
