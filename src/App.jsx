@@ -810,6 +810,62 @@ const ZikrGame = () => {
           console.log('[APP LOAD] Updating daily streak after user login');
           const userData = { userId: user.uid, ...result.data };
           updateDailyStreak(userData);
+          
+          // *** FIX: One-time check for missing streak achievements ***
+          setTimeout(async () => {
+            const currentAchievements = result.data.achievements || [];
+            const currentStreak = result.data.currentStreak || 0;
+            const newAchievements = [...currentAchievements];
+            let achievementAdded = false;
+            
+            console.log('[ACHIEVEMENT CATCHUP] Checking for missing streak achievements...');
+            console.log('[ACHIEVEMENT CATCHUP] Current streak:', currentStreak);
+            console.log('[ACHIEVEMENT CATCHUP] Current achievements:', currentAchievements);
+            
+            ACHIEVEMENTS.forEach(achievement => {
+              if (!currentAchievements.includes(achievement.id) && achievement.requirement.type === 'streak') {
+                const earned = currentStreak >= achievement.requirement.count;
+                
+                if (earned) {
+                  newAchievements.push(achievement.id);
+                  achievementAdded = true;
+                  console.log(`🎉 [ACHIEVEMENT CATCHUP] Awarding missing achievement: ${achievement.name} (${currentStreak} days >= ${achievement.requirement.count} required)`);
+                  
+                  // Show achievement notification
+                  setTimeout(() => {
+                    setNewAchievement({
+                      name: achievement.name,
+                      description: achievement.description,
+                      icon: achievement.icon
+                    });
+                    setShowAchievement(true);
+                  }, 1000);
+                }
+              }
+            });
+            
+            // Update achievements in database if any were added
+            if (achievementAdded) {
+              try {
+                await saveGameProgress(user.uid, {
+                  achievements: newAchievements
+                });
+                
+                // Update local state
+                setCurrentUser(prev => ({
+                  ...prev,
+                  achievements: newAchievements
+                }));
+                
+                console.log('[ACHIEVEMENT CATCHUP] Updated missing achievements in database');
+              } catch (error) {
+                console.error('[ACHIEVEMENT CATCHUP] Error saving:', error);
+              }
+            } else {
+              console.log('[ACHIEVEMENT CATCHUP] No missing achievements found');
+            }
+          }, 2000); // Wait 2 seconds after login to check
+          // *** END FIX ***
         }
       } else {
         // User is signed out
@@ -1256,6 +1312,54 @@ const ZikrGame = () => {
       });
       
       console.log('[STREAK] Updated in database:', { newStreak, newLongestStreak });
+      
+      // *** FIX: Check for streak achievements after streak update ***
+      const currentAchievements = user.achievements || [];
+      const newAchievements = [...currentAchievements];
+      let achievementUnlocked = false;
+      
+      ACHIEVEMENTS.forEach(achievement => {
+        if (!currentAchievements.includes(achievement.id) && achievement.requirement.type === 'streak') {
+          const earned = newStreak >= achievement.requirement.count;
+          
+          if (earned) {
+            newAchievements.push(achievement.id);
+            achievementUnlocked = true;
+            console.log(`🎉 [STREAK ACHIEVEMENT] Unlocked: ${achievement.name} (${newStreak} days streak)`);
+            
+            // Show achievement notification
+            setTimeout(() => {
+              setNewAchievement({
+                name: achievement.name,
+                description: achievement.description,
+                icon: achievement.icon
+              });
+              setShowAchievement(true);
+            }, 500);
+          }
+        }
+      });
+      
+      // Update achievements in database if any were unlocked
+      if (achievementUnlocked) {
+        try {
+          await saveGameProgress(user.userId, {
+            achievements: newAchievements
+          });
+          
+          // Update local state with new achievements
+          setCurrentUser(prev => ({
+            ...prev,
+            achievements: newAchievements
+          }));
+          
+          console.log('[STREAK ACHIEVEMENT] Updated in database:', newAchievements);
+        } catch (error) {
+          console.error('[STREAK ACHIEVEMENT] Error saving:', error);
+        }
+      }
+      // *** END FIX ***
+      
     } catch (error) {
       console.error('[STREAK] Error updating streak:', error);
     }
