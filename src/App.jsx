@@ -1885,11 +1885,24 @@ const ZikrGame = () => {
       return 0.3; // Fixed speed at 0.3 (slower, more contemplative)
     }
     
-    // Focus and Tasbih Modes: Gradual speed increase, then frequency increase
+    // Focus and Tasbih Modes: Fast start, then gradual slowdown
     const elapsed = (Date.now() - gameStartTimeRef.current) / 1000; // seconds
-    const baseSpeed = 0.2; // Starting speed (Normal/Medium)
-    const speedIncrease = Math.floor(elapsed / 40) * 0.05; // Gradual increase every 40 seconds
-    const maxSpeed = 0.4; // Cap speed at 0.4 (after this, increase frequency instead)
+    
+    // Fast start for first 60 seconds (0.5 - running pace)
+    if (elapsed < 60) {
+      console.log('[SPEED] Fast start: 0.5 (running pace)');
+      return 0.5;
+    }
+    
+    // Medium speed after 60 seconds (0.3)
+    if (elapsed < 120) {
+      return 0.3;
+    }
+    
+    // Gradual increase for long sessions
+    const baseSpeed = 0.3;
+    const speedIncrease = Math.floor((elapsed - 120) / 40) * 0.05;
+    const maxSpeed = 0.4;
     return Math.min(baseSpeed + speedIncrease, maxSpeed);
   };
 
@@ -4448,8 +4461,16 @@ const ZikrGame = () => {
                   console.log('  - New Total Points:', newTotalPoints);
                   
                   setTotalPoints(newTotalPoints);
+                  
+                  // Update session stats for display
+                  setSessionStats(prev => ({
+                    ...prev,
+                    accuracy,
+                    duration
+                  }));
+                  
                   saveProgress(newTotalPoints, duration, accuracy, finalSessionScore);
-                  setScreen('menu');
+                  setScreen('stats'); // Show stats screen instead of menu
                 }}
                 className="block w-full mt-4 text-red-600 hover:underline"
               >
@@ -4625,7 +4646,7 @@ const ZikrGame = () => {
               Play Again
             </button>
             <button
-              onClick={() => setScreen('menu')}
+              onClick={() => setScreen('mode-select')}
               className="w-full border-2 border-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-all"
             >
               Back to Menu
