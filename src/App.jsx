@@ -713,10 +713,6 @@ const ZikrGame = () => {
   const [showStreakShieldUsed, setShowStreakShieldUsed] = useState(false);
   const [shieldUsageInfo, setShieldUsageInfo] = useState({ oldCount: 0, newCount: 0 });
   
-  // Initial Speed Boost (First 7 taps)
-  const [isSpeedBoosted, setIsSpeedBoosted] = useState(false);
-  const speedBoostTapCount = useRef(0); // Track taps for speed boost
-  
   // Virtue One-Liners System
   const [showVirtuePopup, setShowVirtuePopup] = useState(false);
   const [currentVirtue, setCurrentVirtue] = useState(null);
@@ -1864,46 +1860,13 @@ const ZikrGame = () => {
   const getSpeed = () => {
     if (!gameStartTimeRef.current) return 0.3;
     
-    // Detect if mobile device
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
-    
-    // Initial Speed Boost - Different speeds for mobile vs desktop (first 7 taps)
-    if (isSpeedBoosted) {
-      const boostSpeed = isMobile ? 2.5 : 4.0; // Lower speed for mobile devices
-      
-      // Log speed periodically during boost
-      const elapsed = Date.now() - gameStartTimeRef.current;
-      if (elapsed % 500 < 50) { // Log roughly every 500ms
-        console.log(`[SPEED DEBUG] Mobile: ${isMobile}, Speed: ${boostSpeed}, Taps: ${speedBoostTapCount.current}/7, Active: ${isSpeedBoosted}`);
-      }
-      
-      return boostSpeed;
-    }
-    
-    // Asma ul Husna Mode: Fixed speed at Level 3 (0.3)
+    // Asma ul Husna Mode: Fixed speed at 0.3 (slower, more contemplative)
     if (gameModeRef.current === 'asma') {
-      return 0.3; // Fixed speed at 0.3 (slower, more contemplative)
-    }
-    
-    // Focus and Tasbih Modes: Fast start, then gradual slowdown
-    const elapsed = (Date.now() - gameStartTimeRef.current) / 1000; // seconds
-    
-    // Fast start for first 60 seconds (0.5 - running pace)
-    if (elapsed < 60) {
-      console.log('[SPEED] Fast start: 0.5 (running pace)');
-      return 0.5;
-    }
-    
-    // Medium speed after 60 seconds (0.3)
-    if (elapsed < 120) {
       return 0.3;
     }
     
-    // Gradual increase for long sessions
-    const baseSpeed = 0.3;
-    const speedIncrease = Math.floor((elapsed - 120) / 40) * 0.05;
-    const maxSpeed = 0.4;
-    return Math.min(baseSpeed + speedIncrease, maxSpeed);
+    // Focus and Tasbih Modes: Fixed speed at 0.5 (running pace)
+    return 0.5;
   };
 
   // Create particle burst effect on unlock
@@ -2118,18 +2081,6 @@ const ZikrGame = () => {
       previouslyUnlockedRef.current = new Set(currentUnlocked);
       
       setScreen('game');
-      
-      // Initial Speed Boost - First 7 phrase taps
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
-      const boostSpeed = isMobile ? 2.5 : 4.0;
-      
-      setIsSpeedBoosted(true);
-      speedBoostTapCount.current = 0; // Reset tap counter
-      
-      console.log(`[SPEED BOOST] Started - ${isMobile ? 'MOBILE' : 'DESKTOP'} SPEED (${boostSpeed}x) for first 7 taps!`);
-      console.log(`[SPEED BOOST] Device: ${isMobile ? 'Mobile' : 'Desktop'}, UserAgent: ${navigator.userAgent.substring(0, 50)}...`);
-      console.log(`[SPEED BOOST] Window width: ${window.innerWidth}px, Tap-based boost active`);
-      console.log(`[SPEED BOOST] Will return to normal speed after 7th phrase tap (~30 seconds)`);
       
       setSessionScore(0);
       sessionScoreRef.current = 0;
@@ -2626,18 +2577,6 @@ const ZikrGame = () => {
   // Handle phrase tap
   const handlePhraseTap = (event, phraseId, points, phraseDataId, isNewlyUnlocked = false) => {
     console.log(`[TAP] gameMode: ${gameMode}, phraseId: ${phraseId}, points: ${points}, isNewlyUnlocked: ${isNewlyUnlocked}`);
-    
-    // Speed Boost: Track taps and disable after 7
-    if (isSpeedBoosted) {
-      speedBoostTapCount.current += 1;
-      console.log(`[SPEED BOOST] Tap ${speedBoostTapCount.current}/7`);
-      
-      if (speedBoostTapCount.current >= 7) {
-        setIsSpeedBoosted(false);
-        console.log('[SPEED BOOST] 🎯 7 taps reached! Returning to normal speed');
-        console.log('[SPEED BOOST] Boost duration: ~30 seconds');
-      }
-    }
     
     // Get tap position for animation
     const rect = event.currentTarget.getBoundingClientRect();
@@ -4437,6 +4376,10 @@ const ZikrGame = () => {
               <button
                 onClick={() => {
                   stopGameLoop();
+                  
+                  // Play completion sound for end of session
+                  playSound('completion');
+                  
                   // Save progress before quitting
                   const duration = gameStartTimeRef.current ? Math.floor((Date.now() - gameStartTimeRef.current) / 1000) : 0;
                   
@@ -4474,7 +4417,7 @@ const ZikrGame = () => {
                 }}
                 className="block w-full mt-4 text-red-600 hover:underline"
               >
-                Quit to Menu
+                Quit
               </button>
             </div>
           </div>
