@@ -737,6 +737,13 @@ const ZikrGame = () => {
   // Sound Effects System
   const [soundsLoaded, setSoundsLoaded] = useState(false);
   const [soundsEnabled, setSoundsEnabled] = useState(true);
+  
+  // Phrase Audio System (NEW!)
+  const [phraseAudioEnabled, setPhraseAudioEnabled] = useState(true);
+  const [phraseAudioVolume, setPhraseAudioVolume] = useState(0.7); // 70% default
+  const [phraseAudioLoaded, setPhraseAudioLoaded] = useState(false);
+  const phraseAudioRefs = useRef({}); // Will hold zikr_1.mp3 to zikr_27.mp3
+  
   const soundRefs = useRef({
     tapSuccess: null,
     phraseMiss: null,
@@ -1750,6 +1757,49 @@ const ZikrGame = () => {
     }
   };
   
+  // Load phrase audio files (NEW!)
+  const loadPhraseAudio = () => {
+    console.log('[PHRASE AUDIO] Loading phrase audio files...');
+    
+    try {
+      // Load all 27 zikr phrase audio files
+      for (let i = 1; i <= 27; i++) {
+        const audio = new Audio(`/assets/audio/zikr_${i}.mp3`);
+        audio.volume = phraseAudioVolume;
+        audio.preload = 'auto';
+        phraseAudioRefs.current[i] = audio;
+      }
+      
+      setPhraseAudioLoaded(true);
+      console.log('[PHRASE AUDIO] All 27 phrase audio files loaded successfully! 🎵');
+    } catch (error) {
+      console.error('[PHRASE AUDIO] Error loading phrase audio:', error);
+    }
+  };
+  
+  // Play phrase audio (NEW!)
+  const playPhraseAudio = (phraseId) => {
+    if (!phraseAudioEnabled || !phraseAudioLoaded) return;
+    
+    const audio = phraseAudioRefs.current[phraseId];
+    if (!audio) {
+      console.warn(`[PHRASE AUDIO] Audio for phrase ${phraseId} not found`);
+      return;
+    }
+    
+    try {
+      // Clone and play (allows overlapping)
+      const audioClone = audio.cloneNode();
+      audioClone.volume = phraseAudioVolume;
+      audioClone.play().catch(err => {
+        console.log(`[PHRASE AUDIO] Play prevented for zikr_${phraseId}:`, err);
+      });
+      console.log(`[PHRASE AUDIO] 🔊 Playing zikr_${phraseId}.mp3`);
+    } catch (error) {
+      console.error(`[PHRASE AUDIO] Error playing zikr_${phraseId}:`, error);
+    }
+  };
+  
   // Play a sound effect
   const playSound = (soundName) => {
     if (!soundsEnabled || !soundsLoaded) return;
@@ -1775,6 +1825,7 @@ const ZikrGame = () => {
   // Load sound effects on component mount
   useEffect(() => {
     loadSoundEffects();
+    loadPhraseAudio(); // Load phrase audio files
     
     // Cleanup
     return () => {
@@ -1782,6 +1833,13 @@ const ZikrGame = () => {
         if (sound) {
           sound.pause();
           sound.src = '';
+        }
+      });
+      // Cleanup phrase audio
+      Object.values(phraseAudioRefs.current).forEach(audio => {
+        if (audio) {
+          audio.pause();
+          audio.src = '';
         }
       });
     };
@@ -2588,6 +2646,11 @@ const ZikrGame = () => {
     
     // Play tap success sound
     playSound('tapSuccess');
+    
+    // Play phrase audio (NEW! 🎵)
+    if (phraseDataId && phraseDataId >= 1 && phraseDataId <= 27) {
+      playPhraseAudio(phraseDataId);
+    }
     
     setPhrases(prev => prev.filter(p => p.id !== phraseId));
     
@@ -3745,6 +3808,61 @@ const ZikrGame = () => {
                   />
                 </button>
               </div>
+
+              {/* Phrase Audio Toggle (NEW!) */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-gray-800 dark:text-gray-100">Phrase Audio 🎵</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Hear each zikr phrase when tapped</p>
+                </div>
+                <button
+                  onClick={() => {
+                    const newState = !phraseAudioEnabled;
+                    setPhraseAudioEnabled(newState);
+                    console.log(`[PHRASE AUDIO] ${newState ? 'Enabled' : 'Disabled'}`);
+                  }}
+                  className={`relative w-16 h-8 rounded-full transition-colors ${
+                    phraseAudioEnabled ? 'bg-emerald-500' : 'bg-gray-300'
+                  }`}
+                >
+                  <div
+                    className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${
+                      phraseAudioEnabled ? 'transform translate-x-8' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Phrase Audio Volume (NEW!) */}
+              {phraseAudioEnabled && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="font-semibold text-gray-800 dark:text-gray-100">Phrase Volume</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Adjust phrase audio loudness</p>
+                    </div>
+                    <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                      {Math.round(phraseAudioVolume * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={phraseAudioVolume * 100}
+                    onChange={(e) => {
+                      const newVolume = parseInt(e.target.value) / 100;
+                      setPhraseAudioVolume(newVolume);
+                      // Update all loaded phrase audio volumes
+                      Object.values(phraseAudioRefs.current).forEach(audio => {
+                        if (audio) audio.volume = newVolume;
+                      });
+                      console.log(`[PHRASE AUDIO] Volume set to ${Math.round(newVolume * 100)}%`);
+                    }}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                  />
+                </div>
+              )}
 
               {/* Speed Control */}
               <div>
