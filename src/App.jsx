@@ -2588,25 +2588,9 @@ const ZikrGame = () => {
         // Remove off-screen phrases
         const remaining = updated.filter(p => p.position <= 110);
 
-        // Calculate spawn frequency multiplier (increases after speed caps at 0.4)
-        const currentSpeed = getSpeed();
-        const elapsed = (Date.now() - gameStartTimeRef.current) / 1000;
-        
-        // SPEED BOOST: Spawn more phrases during first 8 seconds!
-        let targetPhrases = 2; // Base: 2-3 phrases
-        let spawnProbability = 0.7; // Base probability
-        
-        if (elapsed < 8) {
-          // During speed boost: More phrases, higher spawn rate!
-          targetPhrases = 4; // More phrases on screen
-          spawnProbability = 0.95; // Almost always spawn
-          console.log('[SPEED BOOST] High spawn frequency active');
-        } else if (currentSpeed >= 0.4 && (gameModeRef.current === 'focus' || gameModeRef.current === 'tasbih')) {
-          // Speed maxed out - now increase frequency!
-          const frequencyBoost = Math.floor((elapsed - 80) / 30); // Increase every 30s after speed caps
-          targetPhrases = Math.min(2 + frequencyBoost, 4); // Cap at 4 phrases max
-          spawnProbability = Math.min(0.7 + (frequencyBoost * 0.1), 0.95); // Cap at 95% probability
-        }
+        // Consistent spawn frequency throughout the game - MORE INTENSE!
+        const targetPhrases = 4; // Keep 4 phrases on screen consistently
+        const spawnProbability = 0.95; // 95% chance to spawn when below target
 
         // Maintain target number of phrases on screen
         if (remaining.length < targetPhrases) {
