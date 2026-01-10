@@ -1762,22 +1762,32 @@ const ZikrGame = () => {
     console.log('[PHRASE AUDIO] Loading phrase audio files...');
     
     try {
-      // Load all 27 zikr phrase audio files
+      // Load all 27 zikr phrase audio files (zikr_1.mp3 to zikr_27.mp3)
       for (let i = 1; i <= 27; i++) {
         const audio = new Audio(`/assets/audio/zikr_${i}.mp3`);
         audio.volume = phraseAudioVolume;
         audio.preload = 'auto';
         phraseAudioRefs.current[i] = audio;
       }
+      console.log('[PHRASE AUDIO] ✅ Loaded 27 zikr phrase audio files');
+      
+      // Load all 99 Asma ul Husna audio files (asma_101.mp3 to asma_200.mp3)
+      for (let i = 101; i <= 200; i++) {
+        const audio = new Audio(`/assets/audio/asma_${i}.mp3`);
+        audio.volume = phraseAudioVolume;
+        audio.preload = 'auto';
+        phraseAudioRefs.current[i] = audio;
+      }
+      console.log('[PHRASE AUDIO] ✅ Loaded 99 Asma ul Husna audio files');
       
       setPhraseAudioLoaded(true);
-      console.log('[PHRASE AUDIO] All 27 phrase audio files loaded successfully! 🎵');
+      console.log('[PHRASE AUDIO] 🎵 All 126 audio files loaded successfully! (27 zikr + 99 Asma)');
     } catch (error) {
       console.error('[PHRASE AUDIO] Error loading phrase audio:', error);
     }
   };
   
-  // Play phrase audio (NEW!)
+  // Play phrase audio (Zikr and Asma!)
   const playPhraseAudio = (phraseId) => {
     if (!phraseAudioEnabled || !phraseAudioLoaded) return;
     
@@ -1792,11 +1802,17 @@ const ZikrGame = () => {
       const audioClone = audio.cloneNode();
       audioClone.volume = phraseAudioVolume;
       audioClone.play().catch(err => {
-        console.log(`[PHRASE AUDIO] Play prevented for zikr_${phraseId}:`, err);
+        console.log(`[PHRASE AUDIO] Play prevented for phrase ${phraseId}:`, err);
       });
-      console.log(`[PHRASE AUDIO] 🔊 Playing zikr_${phraseId}.mp3`);
+      
+      // Log which type of audio is playing
+      if (phraseId >= 1 && phraseId <= 27) {
+        console.log(`[PHRASE AUDIO] 🔊 Playing zikr_${phraseId}.mp3`);
+      } else if (phraseId >= 101 && phraseId <= 200) {
+        console.log(`[PHRASE AUDIO] 🔊 Playing asma_${phraseId}.mp3`);
+      }
     } catch (error) {
-      console.error(`[PHRASE AUDIO] Error playing zikr_${phraseId}:`, error);
+      console.error(`[PHRASE AUDIO] Error playing phrase ${phraseId}:`, error);
     }
   };
   
@@ -2631,9 +2647,11 @@ const ZikrGame = () => {
     // Play tap success sound
     playSound('tapSuccess');
     
-    // Play phrase audio (NEW! 🎵)
-    if (phraseDataId && phraseDataId >= 1 && phraseDataId <= 27) {
-      playPhraseAudio(phraseDataId);
+    // Play phrase audio for both Zikr (1-27) and Asma (101-200) 🎵
+    if (phraseDataId) {
+      if ((phraseDataId >= 1 && phraseDataId <= 27) || (phraseDataId >= 101 && phraseDataId <= 200)) {
+        playPhraseAudio(phraseDataId);
+      }
     }
     
     setPhrases(prev => prev.filter(p => p.id !== phraseId));
