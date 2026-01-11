@@ -3948,7 +3948,7 @@ const ZikrGame = () => {
             </p>
             <button
               onClick={() => {
-                const unlockPoints = 10000;
+                const unlockPoints = 20000;
                 setTotalPoints(unlockPoints);
                 console.log(`[TESTING] Unlocked all phrases! Total points: ${unlockPoints}`);
                 alert('✅ All phrases unlocked! You can now test Tasbih Mode!');
