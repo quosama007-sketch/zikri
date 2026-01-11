@@ -1,6 +1,43 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Trophy, Heart, Pause, Play, Lock, Unlock, LogOut, User, Award, TrendingUp, Sparkles, Star, Flame, Clock, Target, Zap, Crown, Medal, Users, Circle, Shield, Calendar, Bell, BellOff, Share2, Download, ExternalLink } from 'lucide-react';
 
+// Custom CSS for badge animations
+const badgeStyles = `
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  @keyframes glow-pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+  
+  .animate-shimmer {
+    animation: shimmer 3s infinite;
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .animate-glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+`;
+
+// Inject styles
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = badgeStyles;
+  document.head.appendChild(styleSheet);
+}
+
 // Firebase imports
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -5159,13 +5196,15 @@ const ZikrGame = () => {
             </div>
           </div>
 
-          {/* Achievements Grid */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1]">
-            <h3 className="text-xl font-bold text-[#0f172a] mb-4 flex items-center gap-2">
-              <Medal className="text-[#a855f7]" size={24} />
+          {/* Achievements Grid - REDESIGNED! */}
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl p-6 mb-6 border border-[#cbd5e1] dark:border-gray-700">
+            <h3 className="text-2xl font-bold text-[#0f172a] dark:text-white mb-6 flex items-center gap-2">
+              <Medal className="text-[#a855f7]" size={28} />
               Your Achievements
             </h3>
-            <div className="grid grid-cols-1 gap-4">
+            
+            {/* Beautiful Badge Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {ACHIEVEMENTS.map(achievement => {
                 try {
                   const isUnlocked = userAchievements.includes(achievement.id);
@@ -5188,51 +5227,166 @@ const ZikrGame = () => {
                     case 'unlocked':
                       progress = Math.min(100, (getUnlockedPhraseIds(totalPoints).length / achievement.requirement.count) * 100);
                       break;
+                    case 'phrase_count':
+                      const phraseCount = (currentUser?.phraseCounts || {})[achievement.requirement.phraseId] || 0;
+                      progress = Math.min(100, (phraseCount / achievement.requirement.count) * 100);
+                      break;
                     default:
                       progress = 0;
                   }
 
+                  // Category-specific styling
+                  const getCategoryStyle = (category) => {
+                    switch (category) {
+                      case 'consistency':
+                        return {
+                          gradient: isUnlocked ? 'from-emerald-400 via-teal-400 to-cyan-500' : 'from-gray-300 to-gray-400',
+                          glow: 'shadow-emerald-500/50',
+                          ring: 'ring-emerald-400',
+                          progress: 'from-emerald-500 to-teal-500'
+                        };
+                      case 'milestone':
+                        return {
+                          gradient: isUnlocked ? 'from-amber-400 via-yellow-400 to-orange-500' : 'from-gray-300 to-gray-400',
+                          glow: 'shadow-amber-500/50',
+                          ring: 'ring-amber-400',
+                          progress: 'from-amber-500 to-orange-500'
+                        };
+                      case 'mastery':
+                        return {
+                          gradient: isUnlocked ? 'from-purple-400 via-violet-400 to-indigo-500' : 'from-gray-300 to-gray-400',
+                          glow: 'shadow-purple-500/50',
+                          ring: 'ring-purple-400',
+                          progress: 'from-purple-500 to-indigo-500'
+                        };
+                      case 'speed':
+                        return {
+                          gradient: isUnlocked ? 'from-blue-400 via-cyan-400 to-sky-500' : 'from-gray-300 to-gray-400',
+                          glow: 'shadow-blue-500/50',
+                          ring: 'ring-blue-400',
+                          progress: 'from-blue-500 to-cyan-500'
+                        };
+                      default:
+                        return {
+                          gradient: isUnlocked ? 'from-pink-400 via-rose-400 to-red-500' : 'from-gray-300 to-gray-400',
+                          glow: 'shadow-pink-500/50',
+                          ring: 'ring-pink-400',
+                          progress: 'from-pink-500 to-rose-500'
+                        };
+                    }
+                  };
+
+                  const style = getCategoryStyle(achievement.category);
+
                   return (
                     <div
                       key={achievement.id}
-                      className={`bg-gradient-to-r rounded-2xl shadow-lg p-6 border-2 ${
-                        isUnlocked 
-                          ? 'from-[#e0e7ff] to-[#f8fafc] border-[#a855f7]' 
-                          : 'from-[#f8fafc] to-[#ffffff] border-[#cbd5e1] opacity-60'
+                      className={`group relative bg-gradient-to-br ${style.gradient} rounded-2xl p-1 transition-all duration-300 hover:scale-105 ${
+                        isUnlocked ? `shadow-xl ${style.glow}` : 'shadow-md opacity-50 grayscale'
                       }`}
                     >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`text-5xl ${
-                          isUnlocked ? 'grayscale-0' : 'grayscale opacity-50'
-                        }`}
-                      >
-                        {achievement.icon}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold text-[#0f172a]">{achievement.name}</h3>
-                        <p className="text-sm text-[#64748b] mb-2">{achievement.description}</p>
-                        {!isUnlocked && (
-                          <div className="w-full bg-[#cbd5e1] rounded-full h-2">
-                            <div
-                              className="bg-gradient-to-r from-[#a855f7] to-[#7c3aed] h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${progress}%` }}
-                            ></div>
-                          </div>
-                        )}
+                      {/* Inner card */}
+                      <div className="bg-white dark:bg-gray-800 rounded-xl p-4 h-full flex flex-col items-center text-center relative overflow-hidden">
+                        
+                        {/* Shimmer effect for unlocked badges */}
                         {isUnlocked && (
-                          <div className="flex items-center gap-2 text-[#a855f7] font-semibold">
-                            <Star className="fill-[#a855f7]" size={16} />
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+                        )}
+                        
+                        {/* Badge Icon */}
+                        <div className={`relative w-16 h-16 mb-3 flex items-center justify-center ${
+                          isUnlocked ? 'animate-float' : ''
+                        }`}>
+                          {/* Glow ring for unlocked */}
+                          {isUnlocked && (
+                            <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${style.gradient} blur-md opacity-60 animate-pulse`} />
+                          )}
+                          
+                          {/* Icon */}
+                          <div className={`relative text-5xl ${isUnlocked ? 'scale-110' : 'opacity-50'} transition-all duration-300`}>
+                            {achievement.icon}
+                          </div>
+                          
+                          {/* Lock icon for locked badges */}
+                          {!isUnlocked && (
+                            <div className="absolute -bottom-1 -right-1 bg-gray-600 rounded-full p-1">
+                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Badge Name */}
+                        <h4 className={`font-bold text-sm mb-1 ${
+                          isUnlocked ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+                        }`}>
+                          {achievement.name}
+                        </h4>
+                        
+                        {/* Badge Description */}
+                        <p className={`text-xs mb-2 line-clamp-2 ${
+                          isUnlocked ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'
+                        }`}>
+                          {achievement.description}
+                        </p>
+                        
+                        {/* Progress or Status */}
+                        {!isUnlocked && progress > 0 ? (
+                          <div className="w-full mt-auto">
+                            {/* Progress ring */}
+                            <div className="relative w-12 h-12 mx-auto mb-2">
+                              <svg className="transform -rotate-90 w-12 h-12">
+                                <circle
+                                  cx="24"
+                                  cy="24"
+                                  r="20"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                  fill="none"
+                                  className="text-gray-200 dark:text-gray-700"
+                                />
+                                <circle
+                                  cx="24"
+                                  cy="24"
+                                  r="20"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                  fill="none"
+                                  strokeDasharray={`${2 * Math.PI * 20}`}
+                                  strokeDashoffset={`${2 * Math.PI * 20 * (1 - progress / 100)}`}
+                                  className={`bg-gradient-to-r ${style.progress} transition-all duration-500`}
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                  {Math.round(progress)}%
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : isUnlocked ? (
+                          <div className={`mt-auto flex items-center gap-1 text-xs font-bold bg-gradient-to-r ${style.gradient} bg-clip-text text-transparent`}>
+                            <Star className={`w-3 h-3 fill-current`} style={{
+                              color: achievement.category === 'consistency' ? '#10b981' :
+                                     achievement.category === 'milestone' ? '#f59e0b' :
+                                     achievement.category === 'mastery' ? '#a855f7' :
+                                     achievement.category === 'speed' ? '#3b82f6' : '#ec4899'
+                            }} />
                             <span>Unlocked!</span>
+                          </div>
+                        ) : (
+                          <div className="mt-auto text-xs text-gray-400">
+                            Locked
                           </div>
                         )}
                       </div>
                     </div>
-                  </div>
-                );
+                  );
                 } catch (error) {
                   console.error('[ACHIEVEMENTS] Error rendering achievement:', achievement?.id, error);
-                  return null; // Skip this achievement if there's an error
+                  return null;
                 }
               })}
             </div>
