@@ -3938,30 +3938,6 @@ const ZikrGame = () => {
             </div>
           </div>
 
-          {/* TESTING: Unlock All (for Tasbih Mode testing) */}
-          <div className="bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-3xl shadow-lg p-6 mb-6 border-2 border-orange-300 dark:border-orange-700">
-            <h3 className="text-xl font-bold text-[#0f172a] dark:text-white mb-4 flex items-center gap-2">
-              🧪 Testing Mode
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Unlock all phrases to test Tasbih Mode audio
-            </p>
-            <button
-              onClick={() => {
-                const unlockPoints = 20000;
-                setTotalPoints(unlockPoints);
-                console.log(`[TESTING] Unlocked all phrases! Total points: ${unlockPoints}`);
-                alert('✅ All phrases unlocked! You can now test Tasbih Mode!');
-              }}
-              className="w-full py-3 bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white font-bold rounded-xl shadow-lg transition-all"
-            >
-              🔓 Unlock All Phrases (Testing)
-            </button>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-              This is temporary - for testing audio only
-            </p>
-          </div>
-
           {/* Notification Settings */}
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-lg p-6 mb-6 border border-[#cbd5e1] dark:border-gray-700">
             <h3 className="text-xl font-bold text-[#0f172a] dark:text-white mb-4 flex items-center gap-2">
