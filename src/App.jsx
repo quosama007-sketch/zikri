@@ -2286,8 +2286,13 @@ const ZikrGame = () => {
       ];
       setPhrases(initialPhrases);
       setTotalPhrasesAppeared(3);
-      setBismillahCount(3); // Set to 3 since we spawned 3 Bismillahs initially
-      bismillahCountRef.current = 3; // Set ref immediately for synchronous access
+      
+      // ONLY set Bismillah count for Focus Mode
+      if (mode === 'focus') {
+        setBismillahCount(3); // Set to 3 since we spawned 3 Bismillahs initially
+        bismillahCountRef.current = 3; // Set ref immediately for synchronous access
+        console.log('[FOCUS MODE] Set bismillahCountRef to 3 after initial spawns');
+      }
       
       startGameLoop();
       }, 50);
@@ -2311,6 +2316,8 @@ const ZikrGame = () => {
       const unlockedIds = getUnlockedAsmaIds(asmaTotalTaps);
       availableItems = NAMES_OF_ALLAH.filter(n => unlockedIds.includes(n.id));
       console.log(`[ASMA MODE] Spawning from ${availableItems.length} unlocked names (${asmaTotalTaps} total taps)`);
+      console.log(`[ASMA MODE] Available name IDs: ${availableItems.map(n => n.id).join(', ')}`);
+      console.log(`[ASMA MODE] Available names: ${availableItems.map(n => n.transliteration).join(', ')}`);
     } else if (currentMode === 'tasbih') {
       // Tasbih Mode: Only the selected phrase
       availableItems = tasbihSelectedPhrase ? [tasbihSelectedPhrase] : [];
@@ -2335,12 +2342,16 @@ const ZikrGame = () => {
         if (bismillahCountRef.current < 3) {
           // Force Bismillah for first 3 times only
           randomItem = ZIKR_PHRASES[0]; // Bismillah
-          console.log(`[BISMILLAH] Initial spawn ${bismillahCountRef.current + 1}/3`);
+          bismillahCountRef.current += 1; // INCREMENT IMMEDIATELY
+          setBismillahCount(prev => prev + 1); // Update state too
+          console.log(`[BISMILLAH] Initial spawn ${bismillahCountRef.current}/3 - ref now: ${bismillahCountRef.current}`);
         } else if (consecutiveMisses >= 3 && bismillahHelpCount < 2) {
           // Force Bismillah after 3 consecutive misses (only 2 help spawns total)
           randomItem = ZIKR_PHRASES[0]; // Bismillah
           setBismillahHelpCount(prev => prev + 1);
-          console.log(`[BISMILLAH] Help spawn ${bismillahHelpCount + 1}/2 after 3 consecutive misses`);
+          bismillahCountRef.current += 1; // INCREMENT for help spawn too
+          setBismillahCount(prev => prev + 1);
+          console.log(`[BISMILLAH] Help spawn ${bismillahHelpCount + 1}/2 after 3 consecutive misses - ref now: ${bismillahCountRef.current}`);
         } else {
           // Normal spawning - FILTER OUT BISMILLAH from available items
           const itemsWithoutBismillah = availableItems.filter(p => p.id !== 1);
@@ -2352,41 +2363,43 @@ const ZikrGame = () => {
           console.log(`[DEBUG] itemsWithoutBismillah IDs: ${itemsWithoutBismillah.map(p => p.id).join(', ')}`);
           
           if (itemsWithoutBismillah.length === 0) {
-            console.error('[ERROR] No phrases available except Bismillah!');
-            return;
-          }
-          
-          // Categorize by word count for probability distribution
-          const twoWordItems = itemsWithoutBismillah.filter(p => p.wordCount === 2);
-          const threeWordItems = itemsWithoutBismillah.filter(p => p.wordCount === 3);
-          const fourWordItems = itemsWithoutBismillah.filter(p => p.wordCount === 4);
-          const longerItems = itemsWithoutBismillah.filter(p => p.wordCount > 4);
-          
-          console.log(`[DEBUG] 2-word: ${twoWordItems.length}, 3-word: ${threeWordItems.length}, 4-word: ${fourWordItems.length}, longer: ${longerItems.length}`);
-          
-          // Probability distribution: 2-word (90%), 3-word (5%), 4-word (2%), 5+ word (3%)
-          const rand = Math.random();
-          
-          if (rand < 0.90 && twoWordItems.length > 0) {
-            randomItem = twoWordItems[Math.floor(Math.random() * twoWordItems.length)];
-          } else if (rand < 0.95 && threeWordItems.length > 0) {
-            randomItem = threeWordItems[Math.floor(Math.random() * threeWordItems.length)];
-          } else if (rand < 0.97 && fourWordItems.length > 0) {
-            randomItem = fourWordItems[Math.floor(Math.random() * fourWordItems.length)];
-          } else if (longerItems.length > 0) {
-            randomItem = longerItems[Math.floor(Math.random() * longerItems.length)];
+            // Edge case: Only Bismillah is unlocked (shouldn't happen, but handle it)
+            console.warn('[WARNING] Only Bismillah available! Spawning it anyway to keep game going...');
+            randomItem = ZIKR_PHRASES[0]; // Spawn Bismillah to prevent game stall
           } else {
-            randomItem = itemsWithoutBismillah[Math.floor(Math.random() * itemsWithoutBismillah.length)];
+            // Categorize by word count for probability distribution
+            const twoWordItems = itemsWithoutBismillah.filter(p => p.wordCount === 2);
+            const threeWordItems = itemsWithoutBismillah.filter(p => p.wordCount === 3);
+            const fourWordItems = itemsWithoutBismillah.filter(p => p.wordCount === 4);
+            const longerItems = itemsWithoutBismillah.filter(p => p.wordCount > 4);
+            
+            console.log(`[DEBUG] 2-word: ${twoWordItems.length}, 3-word: ${threeWordItems.length}, 4-word: ${fourWordItems.length}, longer: ${longerItems.length}`);
+            
+            // Probability distribution: 2-word (90%), 3-word (5%), 4-word (2%), 5+ word (3%)
+            const rand = Math.random();
+            
+            if (rand < 0.90 && twoWordItems.length > 0) {
+              randomItem = twoWordItems[Math.floor(Math.random() * twoWordItems.length)];
+            } else if (rand < 0.95 && threeWordItems.length > 0) {
+              randomItem = threeWordItems[Math.floor(Math.random() * threeWordItems.length)];
+            } else if (rand < 0.97 && fourWordItems.length > 0) {
+              randomItem = fourWordItems[Math.floor(Math.random() * fourWordItems.length)];
+            } else if (longerItems.length > 0) {
+              randomItem = longerItems[Math.floor(Math.random() * longerItems.length)];
+            } else {
+              randomItem = itemsWithoutBismillah[Math.floor(Math.random() * itemsWithoutBismillah.length)];
+            }
+            
+            console.log(`[NORMAL SPAWN] Selected: ${randomItem.transliteration} (ID: ${randomItem.id})`);
           }
-          
-          console.log(`[NORMAL SPAWN] Selected: ${randomItem.transliteration} (ID: ${randomItem.id})`);
-        }
       } else {
         // Asma mode - normal probability
         const twoWordItems = availableItems.filter(p => p.wordCount === 2);
         const threeWordItems = availableItems.filter(p => p.wordCount === 3);
         const fourWordItems = availableItems.filter(p => p.wordCount === 4);
         const longerItems = availableItems.filter(p => p.wordCount > 4);
+        
+        console.log(`[ASMA MODE] Word count distribution: 2-word: ${twoWordItems.length}, 3-word: ${threeWordItems.length}, 4-word: ${fourWordItems.length}, longer: ${longerItems.length}`);
         
         const rand = Math.random();
         
@@ -2401,13 +2414,8 @@ const ZikrGame = () => {
         } else {
           randomItem = availableItems[Math.floor(Math.random() * availableItems.length)];
         }
-      }
-    }
-    
-    // Track Bismillah spawns (Focus Mode only)
-    if (currentMode === 'focus' && randomItem.id === 1) {
-      setBismillahCount(prev => prev + 1);
-      bismillahCountRef.current += 1; // Update ref immediately
+        
+        console.log(`[ASMA MODE] Selected: ${randomItem.transliteration} (ID: ${randomItem.id}, wordCount: ${randomItem.wordCount})`);
     }
     
     // Check if this item is newly unlocked (Focus or Asma mode)
@@ -2476,11 +2484,18 @@ const ZikrGame = () => {
           [randomItem.id]: (prev[randomItem.id] || 0) + 1
         }));
       } else if (currentMode === 'asma') {
-        setNewlyUnlockedAsmaNames(prev => ({
-          ...prev,
-          [randomItem.id]: (prev[randomItem.id] || 0) + 1
-        }));
+        setNewlyUnlockedAsmaNames(prev => {
+          const newCount = (prev[randomItem.id] || 0) + 1;
+          console.log(`[ASMA NEWLY UNLOCKED] ${randomItem.transliteration} appeared ${newCount}/3 times`);
+          return {
+            ...prev,
+            [randomItem.id]: newCount
+          };
+        });
       }
+    } else if (currentMode === 'asma') {
+      // Log normal (not newly unlocked) Asma spawns
+      console.log(`[ASMA NORMAL SPAWN] ${randomItem.transliteration} (ID: ${randomItem.id}) - this name can repeat multiple times`);
     }
   };
 
