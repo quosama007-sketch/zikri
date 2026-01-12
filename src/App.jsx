@@ -2417,6 +2417,7 @@ const ZikrGame = () => {
         }
         
         console.log(`[ASMA MODE] Selected: ${randomItem.transliteration} (ID: ${randomItem.id}, wordCount: ${randomItem.wordCount})`);
+      }
     }
     
     // Check if this item is newly unlocked (Focus or Asma mode)
