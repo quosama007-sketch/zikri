@@ -2392,6 +2392,7 @@ const ZikrGame = () => {
             
             console.log(`[NORMAL SPAWN] Selected: ${randomItem.transliteration} (ID: ${randomItem.id})`);
           }
+        }
       } else {
         // Asma mode - normal probability
         const twoWordItems = availableItems.filter(p => p.wordCount === 2);
