@@ -461,7 +461,7 @@ const ACHIEVEMENTS = [
     name: 'At-Tawwab I', 
     nameEn: 'The Repentant',
     description: 'Said "Astaghfirullah" 1,000 times', 
-    icon: '🌟', 
+    icon: '🤲', 
     category: 'mastery',
     tier: 1,
     tierName: 'Brass',
@@ -473,7 +473,7 @@ const ACHIEVEMENTS = [
     name: 'At-Tawwab II', 
     nameEn: 'The Repentant',
     description: 'Said "Astaghfirullah" 2,000 times', 
-    icon: '🌟🌟', 
+    icon: '🤲', 
     category: 'mastery',
     tier: 2,
     tierName: 'Bronze',
@@ -485,7 +485,7 @@ const ACHIEVEMENTS = [
     name: 'At-Tawwab Al-Kabir III', 
     nameEn: 'The Master Repentant',
     description: 'Said "Astaghfirullah" 3,000 times', 
-    icon: '🌟🌟🌟', 
+    icon: '🤲', 
     category: 'mastery',
     tier: 3,
     tierName: 'Silver',
@@ -497,7 +497,7 @@ const ACHIEVEMENTS = [
     name: 'At-Tawwab Al-Mithali IV', 
     nameEn: 'The Exemplary Repentant',
     description: 'Said "Astaghfirullah" 4,000 times', 
-    icon: '🌟🌟🌟🌟', 
+    icon: '🤲', 
     category: 'mastery',
     tier: 4,
     tierName: 'Platinum',
@@ -509,7 +509,7 @@ const ACHIEVEMENTS = [
     name: 'At-Tawwab Al-Usstha V', 
     nameEn: 'The Legendary Repentant',
     description: 'Said "Astaghfirullah" 5,000 times', 
-    icon: '🌟🌟🌟🌟🌟', 
+    icon: '🤲', 
     category: 'mastery',
     tier: 5,
     tierName: 'Gold',
@@ -5294,7 +5294,7 @@ const ZikrGame = () => {
                         )}
                         
                         {/* Badge Icon */}
-                        <div className={`relative w-20 h-20 mb-3 flex items-center justify-center ${
+                        <div className={`relative w-24 h-24 mb-3 flex items-center justify-center ${
                           isUnlocked ? 'animate-float' : ''
                         }`}>
                           {/* Circular dots for mastery badges */}
@@ -5302,14 +5302,14 @@ const ZikrGame = () => {
                             <div className="absolute inset-0">
                               {[...Array(achievement.tier)].map((_, index) => {
                                 const angle = (index / achievement.tier) * 360;
-                                const radius = 35; // Distance from center
+                                const radius = 45; // Distance from center - INCREASED for better spacing
                                 const x = 50 + radius * Math.cos((angle - 90) * Math.PI / 180);
                                 const y = 50 + radius * Math.sin((angle - 90) * Math.PI / 180);
                                 
                                 return (
                                   <div
                                     key={index}
-                                    className={`absolute w-2 h-2 rounded-full ${
+                                    className={`absolute w-2.5 h-2.5 rounded-full ${
                                       isUnlocked 
                                         ? `bg-gradient-to-br ${style.gradient}` 
                                         : 'bg-gray-300 dark:bg-gray-600'
