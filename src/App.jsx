@@ -40,7 +40,7 @@ if (typeof document !== 'undefined') {
 
 // Firebase imports
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { auth, db } from './firebase-config';
 import { registerUser, loginUser, logoutUser } from './firebase-auth';
 import { getUserData, saveGameProgress, getLeaderboard, incrementPhraseCount } from './firebase-data';
@@ -1040,16 +1040,62 @@ const ZikrGame = () => {
     }
 
     if (result.success) {
-      const userData = result.userData || (await getUserData(result.userId)).data;
+      // ✅ DATA PROTECTION FIX: Check and link orphaned data
+      let userData = result.userData || (await getUserData(result.userId)).data;
+      
+      // If no data found, check for orphaned data by username
+      if (!userData || Object.keys(userData).length === 0) {
+        console.log('[DATA PROTECTION] No data found for userId, checking for orphaned data...');
+        
+        try {
+          // Search for data with matching username
+          const usersRef = collection(db, 'users');
+          const q = query(usersRef, where('username', '==', username));
+          const querySnapshot = await getDocs(q);
+          
+          if (!querySnapshot.empty) {
+            console.log('[DATA PROTECTION] ✅ Found orphaned data! Linking to current auth...');
+            
+            // Get the orphaned data
+            const orphanedDoc = querySnapshot.docs[0];
+            const orphanedData = orphanedDoc.data();
+            const oldUserId = orphanedDoc.id;
+            
+            // Copy data to correct userId
+            await setDoc(doc(db, 'users', result.userId), {
+              ...orphanedData,
+              userId: result.userId, // Update to new userId
+              lastLoginDate: new Date(),
+              dataRecovered: true,
+              previousUserId: oldUserId
+            });
+            
+            // Delete old document
+            if (oldUserId !== result.userId) {
+              await deleteDoc(doc(db, 'users', oldUserId));
+            }
+            
+            // Reload userData
+            userData = (await getUserData(result.userId)).data;
+            
+            console.log('[DATA PROTECTION] ✅ Data successfully linked!');
+          } else {
+            console.log('[DATA PROTECTION] No orphaned data found, user will start fresh');
+          }
+        } catch (error) {
+          console.error('[DATA PROTECTION] Error checking for orphaned data:', error);
+          // Continue anyway - user will start fresh
+        }
+      }
       
       setCurrentUser({
         userId: result.userId,
-        username: userData.username,
+        username: userData?.username || username,
         ...userData
       });
       setIsAuthenticated(true);
       setShowAuth(false);
-      setTotalPoints(userData.totalPoints || 0);
+      setTotalPoints(userData?.totalPoints || 0);
       setUsername(''); // Clear username
       setPassword(''); // Clear password
       setUsernameAvailable(null); // Reset check
