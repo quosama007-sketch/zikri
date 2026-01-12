@@ -275,7 +275,7 @@ const ACHIEVEMENTS = [
     name: 'Al-Musabbih I', 
     nameEn: 'The Glorifier',
     description: 'Said "Subhanallah" 1,000 times', 
-    icon: '🌟', 
+    icon: '💎', 
     category: 'mastery',
     tier: 1,
     tierName: 'Brass',
@@ -287,7 +287,7 @@ const ACHIEVEMENTS = [
     name: 'Al-Musabbih II', 
     nameEn: 'The Glorifier',
     description: 'Said "Subhanallah" 2,000 times', 
-    icon: '🌟🌟', 
+    icon: '💎', 
     category: 'mastery',
     tier: 2,
     tierName: 'Bronze',
@@ -299,7 +299,7 @@ const ACHIEVEMENTS = [
     name: 'Al-Musabbih Al-Kabir III', 
     nameEn: 'The Master Glorifier',
     description: 'Said "Subhanallah" 3,000 times', 
-    icon: '🌟🌟🌟', 
+    icon: '💎', 
     category: 'mastery',
     tier: 3,
     tierName: 'Silver',
@@ -311,7 +311,7 @@ const ACHIEVEMENTS = [
     name: 'Al-Musabbih Al-Mithali IV', 
     nameEn: 'The Exemplary Glorifier',
     description: 'Said "Subhanallah" 4,000 times', 
-    icon: '🌟🌟🌟🌟', 
+    icon: '💎', 
     category: 'mastery',
     tier: 4,
     tierName: 'Platinum',
@@ -323,7 +323,7 @@ const ACHIEVEMENTS = [
     name: 'Al-Musabbih Al-Usstha V', 
     nameEn: 'The Legendary Glorifier',
     description: 'Said "Subhanallah" 5,000 times', 
-    icon: '🌟🌟🌟🌟🌟', 
+    icon: '💎', 
     category: 'mastery',
     tier: 5,
     tierName: 'Gold',
@@ -337,7 +337,7 @@ const ACHIEVEMENTS = [
     name: 'Al-Mukabbir I', 
     nameEn: 'The One Who Magnifies',
     description: 'Said "Allahu Akbar" 1,000 times', 
-    icon: '🌟', 
+    icon: '👑', 
     category: 'mastery',
     tier: 1,
     tierName: 'Brass',
@@ -349,7 +349,7 @@ const ACHIEVEMENTS = [
     name: 'Al-Mukabbir II', 
     nameEn: 'The One Who Magnifies',
     description: 'Said "Allahu Akbar" 2,000 times', 
-    icon: '🌟🌟', 
+    icon: '👑', 
     category: 'mastery',
     tier: 2,
     tierName: 'Bronze',
@@ -361,7 +361,7 @@ const ACHIEVEMENTS = [
     name: 'Al-Mukabbir Al-Kabir III', 
     nameEn: 'The Master Magnifier',
     description: 'Said "Allahu Akbar" 3,000 times', 
-    icon: '🌟🌟🌟', 
+    icon: '👑', 
     category: 'mastery',
     tier: 3,
     tierName: 'Silver',
@@ -373,7 +373,7 @@ const ACHIEVEMENTS = [
     name: 'Al-Mukabbir Al-Mithali IV', 
     nameEn: 'The Exemplary Magnifier',
     description: 'Said "Allahu Akbar" 4,000 times', 
-    icon: '🌟🌟🌟🌟', 
+    icon: '👑', 
     category: 'mastery',
     tier: 4,
     tierName: 'Platinum',
@@ -385,7 +385,7 @@ const ACHIEVEMENTS = [
     name: 'Al-Mukabbir Al-Usstha V', 
     nameEn: 'The Legendary Magnifier',
     description: 'Said "Allahu Akbar" 5,000 times', 
-    icon: '🌟🌟🌟🌟🌟', 
+    icon: '👑', 
     category: 'mastery',
     tier: 5,
     tierName: 'Gold',
@@ -399,7 +399,7 @@ const ACHIEVEMENTS = [
     name: 'Al-Hammad I', 
     nameEn: 'The One Who Praises',
     description: 'Said "Alhamdulillah" 1,000 times', 
-    icon: '🌟', 
+    icon: '🎁', 
     category: 'mastery',
     tier: 1,
     tierName: 'Brass',
@@ -411,7 +411,7 @@ const ACHIEVEMENTS = [
     name: 'Al-Hammad II', 
     nameEn: 'The One Who Praises',
     description: 'Said "Alhamdulillah" 2,000 times', 
-    icon: '🌟🌟', 
+    icon: '🎁', 
     category: 'mastery',
     tier: 2,
     tierName: 'Bronze',
@@ -423,7 +423,7 @@ const ACHIEVEMENTS = [
     name: 'Al-Hammad Al-Kabir III', 
     nameEn: 'The Master Praiser',
     description: 'Said "Alhamdulillah" 3,000 times', 
-    icon: '🌟🌟🌟', 
+    icon: '🎁', 
     category: 'mastery',
     tier: 3,
     tierName: 'Silver',
@@ -435,7 +435,7 @@ const ACHIEVEMENTS = [
     name: 'Al-Hammad Al-Mithali IV', 
     nameEn: 'The Exemplary Praiser',
     description: 'Said "Alhamdulillah" 4,000 times', 
-    icon: '🌟🌟🌟🌟', 
+    icon: '🎁', 
     category: 'mastery',
     tier: 4,
     tierName: 'Platinum',
@@ -447,7 +447,7 @@ const ACHIEVEMENTS = [
     name: 'Al-Hammad Al-Usstha V', 
     nameEn: 'The Legendary Praiser',
     description: 'Said "Alhamdulillah" 5,000 times', 
-    icon: '🌟🌟🌟🌟🌟', 
+    icon: '🎁', 
     category: 'mastery',
     tier: 5,
     tierName: 'Gold',
@@ -5294,9 +5294,37 @@ const ZikrGame = () => {
                         )}
                         
                         {/* Badge Icon */}
-                        <div className={`relative w-16 h-16 mb-3 flex items-center justify-center ${
+                        <div className={`relative w-20 h-20 mb-3 flex items-center justify-center ${
                           isUnlocked ? 'animate-float' : ''
                         }`}>
+                          {/* Circular dots for mastery badges */}
+                          {achievement.category === 'mastery' && achievement.tier && (
+                            <div className="absolute inset-0">
+                              {[...Array(achievement.tier)].map((_, index) => {
+                                const angle = (index / achievement.tier) * 360;
+                                const radius = 35; // Distance from center
+                                const x = 50 + radius * Math.cos((angle - 90) * Math.PI / 180);
+                                const y = 50 + radius * Math.sin((angle - 90) * Math.PI / 180);
+                                
+                                return (
+                                  <div
+                                    key={index}
+                                    className={`absolute w-2 h-2 rounded-full ${
+                                      isUnlocked 
+                                        ? `bg-gradient-to-br ${style.gradient}` 
+                                        : 'bg-gray-300 dark:bg-gray-600'
+                                    }`}
+                                    style={{
+                                      left: `${x}%`,
+                                      top: `${y}%`,
+                                      transform: 'translate(-50%, -50%)',
+                                    }}
+                                  />
+                                );
+                              })}
+                            </div>
+                          )}
+                          
                           {/* Glow ring for unlocked */}
                           {isUnlocked && (
                             <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${style.gradient} blur-md opacity-60 animate-pulse`} />
