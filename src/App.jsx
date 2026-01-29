@@ -822,6 +822,7 @@ const ZikrGame = () => {
   const tasbihCurrentCountRef = useRef(0); // Track Tasbih count in ref for real-time access (renamed from tasbih)
   const gameModeRef = useRef('focus'); // Track game mode in ref for immediate updates
   const bismillahCountRef = useRef(0); // Track Bismillah count in ref for immediate access
+  const asmaTotalTapsRef = useRef(0); // Track Asma taps in ref for immediate access (prevents state timing issues)
 
   // Load user data from localStorage
   // Firebase Auth State Listener
@@ -835,6 +836,7 @@ const ZikrGame = () => {
           setIsAuthenticated(true);
           setTotalPoints(result.data.totalPoints || 0);
           setAsmaTotalTaps(result.data.asmaTotalTaps || 0); // Load Asma taps
+          asmaTotalTapsRef.current = result.data.asmaTotalTaps || 0; // ✅ BUG FIX: Also set ref for immediate access
           setTasbihTotalCounts(result.data.tasbihTotalCounts || {}); // Load Tasbih counts
           // Load profile preferences
           setProfileAvatar(result.data.profileAvatar || 'dove'); // Default to dove
@@ -2245,9 +2247,24 @@ const ZikrGame = () => {
       setTasbihSessionScore(0); // Reset Tasbih session score
       setLives(5);
       setConsecutiveMisses(0);
-      setBismillahCount(0); // Reset Bismillah counter
-      bismillahCountRef.current = 0; // Reset ref
-      setBismillahHelpCount(0); // Reset help Bismillah counter
+      
+      // ✅ BUG FIX: Only reset Bismillah counter for BRAND NEW users
+      // For returning users, keep ref at 3+ so Bismillah never force-spawns again
+      if (totalPoints === 0 && bismillahCountRef.current === 0) {
+        // Brand new user, first game ever
+        setBismillahCount(0);
+        bismillahCountRef.current = 0;
+        console.log('[BISMILLAH FIX] New user - allowing initial Bismillah spawns');
+      } else {
+        // Returning user or already played - keep ref at 3+ to prevent Bismillah spam
+        if (bismillahCountRef.current < 3) {
+          bismillahCountRef.current = 3;
+          setBismillahCount(3);
+        }
+        console.log('[BISMILLAH FIX] Returning user - Bismillah spawns disabled');
+      }
+      
+      setBismillahHelpCount(0); // Reset help counter (but we'll remove help logic anyway)
       setPhrases([]);  // Clear again to be sure
       setNewlyUnlockedPhrases({});
       setNewlyUnlockedAsmaNames({}); // Reset newly unlocked Asma names
@@ -2358,10 +2375,11 @@ const ZikrGame = () => {
       availableItems = ZIKR_PHRASES.filter(p => p.unlockAt <= currentTotal);
       console.log(`[FOCUS MODE] Spawning from ${availableItems.length} unlocked ZIKR_PHRASES`);
     } else if (currentMode === 'asma') {
-      // Asma ul Husna Mode: Based on tap count (33-tap rule)
-      const unlockedIds = getUnlockedAsmaIds(asmaTotalTaps);
+      // ✅ BUG FIX: Use ref for immediate access (state updates are async!)
+      const currentTaps = asmaTotalTapsRef.current;
+      const unlockedIds = getUnlockedAsmaIds(currentTaps);
       availableItems = NAMES_OF_ALLAH.filter(n => unlockedIds.includes(n.id));
-      console.log(`[ASMA MODE] Spawning from ${availableItems.length} unlocked names (${asmaTotalTaps} total taps)`);
+      console.log(`[ASMA MODE] Spawning from ${availableItems.length} unlocked names (${currentTaps} total taps - from ref)`);
       console.log(`[ASMA MODE] Available name IDs: ${availableItems.map(n => n.id).join(', ')}`);
       console.log(`[ASMA MODE] Available names: ${availableItems.map(n => n.transliteration).join(', ')}`);
     } else if (currentMode === 'tasbih') {
@@ -2391,14 +2409,8 @@ const ZikrGame = () => {
           bismillahCountRef.current += 1; // INCREMENT IMMEDIATELY
           setBismillahCount(prev => prev + 1); // Update state too
           console.log(`[BISMILLAH] Initial spawn ${bismillahCountRef.current}/3 - ref now: ${bismillahCountRef.current}`);
-        } else if (consecutiveMisses >= 3 && bismillahHelpCount < 2) {
-          // Force Bismillah after 3 consecutive misses (only 2 help spawns total)
-          randomItem = ZIKR_PHRASES[0]; // Bismillah
-          setBismillahHelpCount(prev => prev + 1);
-          bismillahCountRef.current += 1; // INCREMENT for help spawn too
-          setBismillahCount(prev => prev + 1);
-          console.log(`[BISMILLAH] Help spawn ${bismillahHelpCount + 1}/2 after 3 consecutive misses - ref now: ${bismillahCountRef.current}`);
         } else {
+          // ✅ BUG FIX: Removed "help spawn" logic that caused Bismillah spam
           // Normal spawning - FILTER OUT BISMILLAH from available items
           const itemsWithoutBismillah = availableItems.filter(p => p.id !== 1);
           
@@ -2780,6 +2792,8 @@ const ZikrGame = () => {
       
       setAsmaTotalTaps(prev => {
         const newTaps = prev + 1;
+        asmaTotalTapsRef.current = newTaps; // ✅ BUG FIX: Update ref immediately for spawnPhrase
+        
         const oldUnlockedCount = getUnlockedAsmaIds(prev).length;
         const newUnlockedCount = getUnlockedAsmaIds(newTaps).length;
         
