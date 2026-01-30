@@ -40,7 +40,7 @@ if (typeof document !== 'undefined') {
 
 // Firebase imports
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, query, where, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase-config';
 import { registerUser, loginUser, logoutUser } from './firebase-auth';
 import { getUserData, saveGameProgress, getLeaderboard, incrementPhraseCount } from './firebase-data';
@@ -3023,6 +3023,18 @@ const ZikrGame = () => {
         
         console.log(`[ASMA TAP] Total taps: ${prev} → ${newTaps} (Next unlock at: ${Math.ceil(newTaps / 33) * 33})`);
         console.log(`[ASMA TAP] Names unlocked: ${oldUnlockedCount} → ${newUnlockedCount}`);
+        
+        // ✅ CRITICAL FIX: Save asmaTotalTaps IMMEDIATELY to prevent data loss if user quits
+        if (currentUser && currentUser.userId) {
+          const userRef = doc(db, 'users', currentUser.userId);
+          updateDoc(userRef, {
+            asmaTotalTaps: newTaps
+          }).catch(error => {
+            console.error('[ASMA SAVE ERROR] Failed to save asmaTotalTaps:', error);
+          });
+          console.log(`[ASMA SAVE] ✅ Saved asmaTotalTaps: ${newTaps} to Firestore`);
+        }
+        
         return newTaps;
       });
     }
