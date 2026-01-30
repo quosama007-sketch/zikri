@@ -681,6 +681,179 @@ const getPhraseColor = (phraseId) => {
   return colors[phraseId] || { bg: 'from-gray-400 to-gray-500', border: 'border-gray-500', text: 'text-gray-900' };
 };
 
+// ✨ ZIKR FACTS DATABASE - Educational & Spiritual Wisdom
+const ZIKR_FACTS = [
+  // SubhanAllah Facts
+  {
+    id: 1,
+    title: '💎 Benefit of SubhanAllah',
+    fact: 'Saying SubhanAllah 100 times equals 1,000 good deeds!',
+    source: 'Hadith - Muslim',
+    icon: '💎',
+    gradient: 'from-blue-500 to-cyan-500'
+  },
+  {
+    id: 2,
+    title: '🌳 Trees in Jannah',
+    fact: 'A tree is planted in Paradise for every SubhanAllah you say',
+    source: 'Hadith - Tirmidhi',
+    icon: '🌳',
+    gradient: 'from-green-500 to-emerald-500'
+  },
+  {
+    id: 3,
+    title: '⚖️ The Scale',
+    fact: 'SubhanAllah fills the scale of good deeds on Judgment Day',
+    source: 'Hadith - Muslim',
+    icon: '⚖️',
+    gradient: 'from-purple-500 to-pink-500'
+  },
+  
+  // Alhamdulillah Facts
+  {
+    id: 4,
+    title: '🌊 Fills the Universe',
+    fact: 'Alhamdulillah fills the space between heaven and earth',
+    source: 'Hadith - Muslim',
+    icon: '🌊',
+    gradient: 'from-indigo-500 to-blue-500'
+  },
+  {
+    id: 5,
+    title: '📈 Gratitude Increases Blessings',
+    fact: '"If you are grateful, I will surely increase you" - Quran 14:7',
+    source: 'Quran 14:7',
+    icon: '📈',
+    gradient: 'from-amber-500 to-orange-500'
+  },
+  {
+    id: 6,
+    title: '🍽️ Best After Eating',
+    fact: 'The best words to say after eating: Alhamdulillah',
+    source: 'Hadith - Abu Dawud',
+    icon: '🍽️',
+    gradient: 'from-teal-500 to-cyan-500'
+  },
+  
+  // Allahu Akbar Facts
+  {
+    id: 7,
+    title: '🕌 Opening of Salah',
+    fact: 'Allahu Akbar is the opening declaration of every prayer',
+    source: 'Islamic Practice',
+    icon: '🕌',
+    gradient: 'from-emerald-500 to-green-500'
+  },
+  {
+    id: 8,
+    title: '⛰️ Said on Safa',
+    fact: 'Allahu Akbar is proclaimed on top of Safa during Hajj',
+    source: 'Hadith - Bukhari',
+    icon: '⛰️',
+    gradient: 'from-purple-500 to-violet-500'
+  },
+  {
+    id: 9,
+    title: '🌟 Day of Arafah',
+    fact: 'The best phrase on the Day of Arafah is Allahu Akbar',
+    source: 'Hadith - Tirmidhi',
+    icon: '🌟',
+    gradient: 'from-yellow-500 to-amber-500'
+  },
+  
+  // Astaghfirullah Facts
+  {
+    id: 10,
+    title: '💧 Wipes Away Sins',
+    fact: 'Seeking forgiveness erases sins like water extinguishes fire',
+    source: 'Hadith - Ahmad',
+    icon: '💧',
+    gradient: 'from-blue-500 to-indigo-500'
+  },
+  {
+    id: 11,
+    title: '🚪 Opens Doors',
+    fact: 'Astaghfirullah opens doors of provision and relief',
+    source: 'Quran 71:10-12',
+    icon: '🚪',
+    gradient: 'from-teal-500 to-emerald-500'
+  },
+  {
+    id: 12,
+    title: '☁️ Brings Rain',
+    fact: 'Seeking forgiveness brings rain and increases wealth',
+    source: 'Quran 71:10-11',
+    icon: '☁️',
+    gradient: 'from-cyan-500 to-blue-500'
+  },
+  
+  // General Dhikr Wisdom
+  {
+    id: 13,
+    title: '✨ Polishes the Heart',
+    fact: 'Dhikr polishes the heart like polish removes rust',
+    source: 'Hadith - Tirmidhi',
+    icon: '✨',
+    gradient: 'from-pink-500 to-rose-500'
+  },
+  {
+    id: 14,
+    title: '👼 Angels Surround You',
+    fact: 'In a gathering of dhikr, angels surround you',
+    source: 'Hadith - Muslim',
+    icon: '👼',
+    gradient: 'from-purple-500 to-pink-500'
+  },
+  {
+    id: 15,
+    title: '🛡️ Morning & Evening Protection',
+    fact: 'Dhikr in morning and evening grants protection for the day',
+    source: 'Hadith - Abu Dawud',
+    icon: '🛡️',
+    gradient: 'from-orange-500 to-red-500'
+  },
+  {
+    id: 16,
+    title: '💫 The Greatest Act',
+    fact: '"The remembrance of Allah is the greatest" - Quran 29:45',
+    source: 'Quran 29:45',
+    icon: '💫',
+    gradient: 'from-indigo-500 to-purple-500'
+  },
+  {
+    id: 17,
+    title: '💝 Most Beloved Words',
+    fact: 'Most beloved to Allah: SubhanAllah, Alhamdulillah, La ilaha illallah, Allahu Akbar',
+    source: 'Hadith - Muslim',
+    icon: '💝',
+    gradient: 'from-rose-500 to-pink-500'
+  },
+  {
+    id: 18,
+    title: '🏆 Best Remembrance',
+    fact: 'The best remembrance is: La ilaha illallah (There is no god but Allah)',
+    source: 'Hadith - Tirmidhi',
+    icon: '🏆',
+    gradient: 'from-yellow-500 to-orange-500'
+  },
+  {
+    id: 19,
+    title: '💎 Treasure of Paradise',
+    fact: '"La hawla wa la quwwata illa billah" is a treasure from Paradise',
+    source: 'Hadith - Bukhari',
+    icon: '💎',
+    gradient: 'from-emerald-500 to-teal-500'
+  },
+  {
+    id: 20,
+    title: '🌙 Light in Darkness',
+    fact: 'Dhikr is light that illuminates the heart in times of darkness',
+    source: 'Hadith - Muslim',
+    icon: '🌙',
+    gradient: 'from-indigo-500 to-blue-500'
+  },
+];
+
 const ZikrGame = () => {
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -755,6 +928,9 @@ const ZikrGame = () => {
   const [currentVirtue, setCurrentVirtue] = useState(null);
   const [unlockedVirtues, setUnlockedVirtues] = useState([]);
   const [phraseTapCounts, setPhraseTapCounts] = useState({}); // Track taps per phrase for virtue unlocks
+  
+  // ✨ Zikr Fact state
+  const [currentZikrFact, setCurrentZikrFact] = useState(null);
   
   // Social Sharing System
   const [showShareModal, setShowShareModal] = useState(false);
@@ -2993,6 +3169,10 @@ const ZikrGame = () => {
     
     setScreen('stats');
     
+    // ✨ Set a random Zikr Fact for the results screen
+    const randomFact = ZIKR_FACTS[Math.floor(Math.random() * ZIKR_FACTS.length)];
+    setCurrentZikrFact(randomFact);
+    
     // Check if any virtues should be shown after session
     setTimeout(() => {
       checkAndShowVirtue(phraseTapCounts);
@@ -4772,30 +4952,46 @@ const ZikrGame = () => {
                 <p className="text-gray-600 text-sm mb-1">Taps</p>
                 <p className="text-2xl font-bold text-blue-600">{sessionStats.totalTaps}</p>
               </div>
-              {gameMode !== 'tasbih' && (
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200">
-                  <p className="text-gray-600 text-sm mb-1">Accuracy</p>
-                  <p className="text-2xl font-bold text-purple-600">{sessionStats.accuracy}%</p>
-                </div>
-              )}
-              {gameMode === 'tasbih' && (
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
-                  <p className="text-gray-600 text-sm mb-1">Duration</p>
-                  <p className="text-2xl font-bold text-green-600">{sessionStats.duration}s</p>
-                </div>
-              )}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+                <p className="text-gray-600 text-sm mb-1">Duration</p>
+                <p className="text-2xl font-bold text-green-600">{sessionStats.duration}s</p>
+              </div>
             </div>
 
-            {gameMode !== 'tasbih' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-xl p-4 border border-orange-200">
-                  <p className="text-gray-600 text-sm mb-1">Missed</p>
-                  <p className="text-2xl font-bold text-orange-600">{sessionStats.missedPhrases}</p>
+            {/* ✨ ZIKR FACT SECTION - Educational & Spiritual */}
+            {currentZikrFact && gameMode !== 'tasbih' && (
+              <div className={`bg-gradient-to-br ${currentZikrFact.gradient} rounded-2xl p-5 border-2 border-white/50 shadow-lg transform hover:scale-[1.02] transition-all`}>
+                {/* Icon and Title */}
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-3xl">{currentZikrFact.icon}</span>
+                  <h3 className="text-white font-bold text-lg drop-shadow-md">{currentZikrFact.title}</h3>
                 </div>
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
-                  <p className="text-gray-600 text-sm mb-1">Duration</p>
-                  <p className="text-2xl font-bold text-green-600">{sessionStats.duration}s</p>
-                </div>
+                
+                {/* Fact Text */}
+                <p className="text-white text-base leading-relaxed mb-3 drop-shadow">
+                  {currentZikrFact.fact}
+                </p>
+                
+                {/* Source */}
+                <p className="text-white/90 text-xs italic mb-4 drop-shadow">
+                  — {currentZikrFact.source}
+                </p>
+                
+                {/* Show Another Button */}
+                <button
+                  onClick={() => {
+                    // Get a different random fact
+                    let newFact;
+                    do {
+                      newFact = ZIKR_FACTS[Math.floor(Math.random() * ZIKR_FACTS.length)];
+                    } while (newFact.id === currentZikrFact.id && ZIKR_FACTS.length > 1);
+                    setCurrentZikrFact(newFact);
+                  }}
+                  className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white py-2.5 px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 border border-white/30"
+                >
+                  <span>Show Another</span>
+                  <span className="text-lg">→</span>
+                </button>
               </div>
             )}
 
