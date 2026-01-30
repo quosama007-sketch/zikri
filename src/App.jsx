@@ -4960,7 +4960,7 @@ const ZikrGame = () => {
 
             {/* ✨ ZIKR FACT SECTION - Educational & Spiritual */}
             {currentZikrFact && gameMode !== 'tasbih' && (
-              <div className={`bg-gradient-to-br ${currentZikrFact.gradient} rounded-2xl p-5 border-2 border-white/50 shadow-lg transform hover:scale-[1.02] transition-all`}>
+              <div className={`bg-gradient-to-br ${currentZikrFact.gradient} rounded-2xl p-5 border-2 border-white/50 shadow-lg`}>
                 {/* Icon and Title */}
                 <div className="flex items-center gap-3 mb-3">
                   <span className="text-3xl">{currentZikrFact.icon}</span>
@@ -4973,25 +4973,9 @@ const ZikrGame = () => {
                 </p>
                 
                 {/* Source */}
-                <p className="text-white/90 text-xs italic mb-4 drop-shadow">
+                <p className="text-white/90 text-xs italic drop-shadow">
                   — {currentZikrFact.source}
                 </p>
-                
-                {/* Show Another Button */}
-                <button
-                  onClick={() => {
-                    // Get a different random fact
-                    let newFact;
-                    do {
-                      newFact = ZIKR_FACTS[Math.floor(Math.random() * ZIKR_FACTS.length)];
-                    } while (newFact.id === currentZikrFact.id && ZIKR_FACTS.length > 1);
-                    setCurrentZikrFact(newFact);
-                  }}
-                  className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white py-2.5 px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 border border-white/30"
-                >
-                  <span>Show Another</span>
-                  <span className="text-lg">→</span>
-                </button>
               </div>
             )}
 
