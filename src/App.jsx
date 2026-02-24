@@ -45,6 +45,10 @@ import {
   createParticleBurst,
   createFireworks,
   createTapEffect,
+  checkAllAchievements,
+  checkTokenEarning,
+  updateDailyStats,
+  getAchievementById,
 } from "./services/game";
 
 // Custom CSS for badge animations
@@ -1030,17 +1034,13 @@ const ZikrGame = () => {
     const newTotalPoints = points; // Use the passed parameter directly!
 
     // Check if user earned new token (crossed 30K threshold)
-    const previousTokens = calculateFreezeTokens(previousTotalPoints);
-    const newTokens = calculateFreezeTokens(newTotalPoints);
+    const tokenResult = checkTokenEarning(
+      previousTotalPoints,
+      newTotalPoints,
+      calculateFreezeTokens,
+    );
 
-    if (newTokens > previousTokens) {
-      // User earned new token(s)!
-      const tokensEarned = newTokens - previousTokens;
-      console.log(`[TOKEN] Earned ${tokensEarned} new freeze token(s)!`);
-      console.log(
-        `[TOKEN] Previous total: ${previousTotalPoints}, New total: ${newTotalPoints}`,
-      );
-
+    if (tokenResult.earned) {
       // Show celebration notification
       setTimeout(() => {
         setShowTokenEarned(true);
@@ -1049,106 +1049,44 @@ const ZikrGame = () => {
 
     // Check for new achievements
     const currentAchievements = currentUser.achievements || [];
-    const newAchievements = [...currentAchievements];
 
-    ACHIEVEMENTS.forEach((achievement) => {
-      if (!currentAchievements.includes(achievement.id)) {
-        let earned = false;
+    const gameData = {
+      points,
+      sessionAccuracy,
+      sessionPoints,
+      additionalTime,
+      newSessionsCompleted,
+      newTotalTime,
+      newStreak,
+    };
 
-        switch (achievement.requirement.type) {
-          case "sessions":
-            earned = newSessionsCompleted >= achievement.requirement.count;
-            break;
-          case "points":
-            earned = points >= achievement.requirement.count;
-            break;
-          case "streak":
-            earned = newStreak >= achievement.requirement.count;
-            break;
-          case "time":
-            earned = newTotalTime >= achievement.requirement.count;
-            break;
-          case "unlocked":
-            earned =
-              getUnlockedPhraseIds(points).length >=
-              achievement.requirement.count;
-            break;
-          case "accuracy":
-            earned = sessionAccuracy >= achievement.requirement.count;
-            break;
-          case "session_score":
-            earned = sessionPoints >= achievement.requirement.count;
-            break;
-          case "phrase_count":
-            const phraseCount =
-              (currentUser.phraseCounts || {})[
-                achievement.requirement.phraseId
-              ] || 0;
-            earned = phraseCount >= achievement.requirement.count;
-            console.log(
-              `[ACHIEVEMENT CHECK] ${achievement.name}: phraseId ${achievement.requirement.phraseId} count ${phraseCount} >= ${achievement.requirement.count}? ${earned}`,
-            );
-            break;
-          case "session_duration":
-            earned = additionalTime >= achievement.requirement.count;
-            break;
-          case "daily_points":
-            earned =
-              (currentUser.dailyPoints || 0) >= achievement.requirement.count;
-            break;
-          case "unlock_phrase":
-            earned = getUnlockedPhraseIds(points).includes(
-              achievement.requirement.phraseId,
-            );
-            break;
-          case "all_badges":
-            const otherBadges = ACHIEVEMENTS.filter(
-              (a) => a.id !== achievement.id,
-            );
-            earned = otherBadges.every((a) =>
-              currentAchievements.includes(a.id),
-            );
-            break;
-          case "first_phrase":
-            earned = false;
-            break;
-          case "night_session":
-          case "silent_session":
-          case "category_weekly":
-          case "mastery_level":
-            earned = false;
-            break;
-        }
+    const userData = {
+      phraseCounts: currentUser.phraseCounts,
+      dailyPoints: currentUser.dailyPoints,
+    };
 
-        if (earned) {
-          newAchievements.push(achievement.id);
-          console.log(`🎉 Achievement unlocked: ${achievement.name}`);
-        }
-      }
-    });
-
-    // Check if new achievements were unlocked this session
-    const newlyUnlockedIds = newAchievements.filter(
-      (id) => !currentAchievements.includes(id),
+    const achievementResult = checkAllAchievements(
+      gameData,
+      userData,
+      currentAchievements,
     );
-    if (newlyUnlockedIds.length > 0) {
-      console.log(
-        `[ACHIEVEMENTS] ${newlyUnlockedIds.length} new achievement(s) unlocked!`,
-      );
 
+    const newAchievements = achievementResult.newAchievements;
+    const newlyUnlockedIds = achievementResult.newlyUnlockedIds;
+    // Check if new achievements were unlocked this session
+    // Achievement notifications
+    if (newlyUnlockedIds.length > 0) {
       // Send achievement notifications
       if (
         notificationSettings.achievements?.enabled &&
         notificationPermission === "granted"
       ) {
         newlyUnlockedIds.forEach((achievementId) => {
-          const achievement = ALL_ACHIEVEMENTS.find(
-            (a) => a.id === achievementId,
-          );
+          const achievement = getAchievementById(achievementId);
           if (achievement) {
             setTimeout(() => {
               sendAchievementNotification(achievement.name);
-            }, 2000); // Send notification after 2 seconds
+            }, 2000);
           }
         });
       }
@@ -1157,7 +1095,7 @@ const ZikrGame = () => {
       setTimeout(() => {
         setUnlockedAchievementIds(newlyUnlockedIds);
         setShowAchievementUnlocked(true);
-      }, 1500); // Show after 1.5 seconds
+      }, 1500);
     }
 
     // Prepare data for Firebase
@@ -1186,17 +1124,14 @@ const ZikrGame = () => {
     };
 
     // Update daily stats for calendar tracker
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-    const dailyStats = currentUser.dailyStats || {};
-    const todayStats = dailyStats[today] || { taps: 0, points: 0, time: 0 };
+    const updatedDailyStats = updateDailyStats(
+      currentUser.dailyStats || {},
+      sessionStats.totalTaps,
+      sessionPoints,
+      additionalTime,
+    );
 
-    dailyStats[today] = {
-      taps: todayStats.taps + sessionStats.totalTaps,
-      points: todayStats.points + sessionPoints,
-      time: todayStats.time + additionalTime,
-    };
-
-    progressData.dailyStats = dailyStats;
+    progressData.dailyStats = updatedDailyStats;
 
     // Save to Firebase
     const result = await saveGameProgress(currentUser.userId, progressData);
