@@ -36,6 +36,12 @@ import {
   ZIKR_FACTS,
   getPhraseColor,
 } from "./constants";
+import {
+  getUnlockedPhraseIds,
+  getUnlockedAsmaIds,
+  getBackgroundIndex,
+  calculateFreezeTokens,
+} from "./services/game";
 
 // Custom CSS for badge animations
 const badgeStyles = `
@@ -689,18 +695,6 @@ const ZikrGame = () => {
 
   // ===== STREAK FREEZE TOKEN SYSTEM =====
 
-  // Calculate freeze tokens from total points
-  const calculateFreezeTokens = (totalPoints) => {
-    const tokensEarned = Math.floor(totalPoints / 30000);
-    return Math.min(tokensEarned, 10); // Max 10 tokens
-  };
-
-  // Check if a specific date has active freeze
-  const isDateFrozen = (dateString) => {
-    const activeFreezes = currentUser?.activeFreezes || [];
-    return activeFreezes.includes(dateString);
-  };
-
   // Activate manual freeze for selected dates
   const activateManualFreeze = async (dates) => {
     if (!currentUser || !currentUser.userId) return;
@@ -1213,39 +1207,8 @@ const ZikrGame = () => {
     }
   };
 
-  // Get unlocked phrase IDs based on total points
-  const getUnlockedPhraseIds = (points) => {
-    return ZIKR_PHRASES.filter((p) => p.unlockAt <= points).map((p) => p.id);
-  };
-
-  // Get unlocked Asma ul Husna names based on tap count (33-tap rule)
-  const getUnlockedAsmaIds = (tapCount) => {
-    // Start with 2 names: Ya Allah (101) and Ya Rabb (102)
-    // Every 33 taps unlocks the next name
-    const baseUnlocked = 2;
-    const additionalUnlocked = Math.floor(tapCount / 33);
-    const totalUnlocked = Math.min(
-      baseUnlocked + additionalUnlocked,
-      NAMES_OF_ALLAH.length,
-    );
-
-    return NAMES_OF_ALLAH.slice(0, totalUnlocked).map((n) => n.id);
-  };
-
-  // Get available phrases for gameplay
-  const getAvailablePhrases = () => {
-    const unlockedIds = getUnlockedPhraseIds(totalPoints);
-    return ZIKR_PHRASES.filter((p) => unlockedIds.includes(p.id));
-  };
-
   // Get dynamic background based on total points (Focus Mode only)
   // ===== DYNAMIC BACKGROUND & AUDIO SYSTEM (FOCUS MODE) =====
-
-  // Calculate background index based on session score (1-11)
-  const getBackgroundIndex = (score) => {
-    // 0-799 → 1, 800-1599 → 2, 1600-2399 → 3, ... 8000+ → 11
-    return Math.min(Math.floor(score / 800) + 1, 11);
-  };
 
   // Fade out audio smoothly
   const fadeOutAudio = (audio, duration = 1000) => {
@@ -1590,68 +1553,6 @@ const ZikrGame = () => {
       }
     }
   }, [isPaused, gameMode, screen]);
-
-  // Legacy background function (kept for non-Focus modes)
-  const getGameBackground = () => {
-    const points = totalPoints + sessionScore;
-
-    let background = "";
-    let message = "";
-
-    if (points < 250) {
-      background =
-        "bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900";
-      message = "🌙 Night Sky - Peaceful contemplation";
-    } else if (points < 500) {
-      background =
-        "bg-gradient-to-br from-amber-100 via-yellow-50 to-emerald-100";
-      message = "🕌 Inside the Mosque - Sacred atmosphere";
-    } else if (points < 750) {
-      background = "bg-gradient-to-br from-cyan-200 via-blue-100 to-amber-100";
-      message = "🏖️ Beach - Calm and serene";
-    } else if (points < 1000) {
-      background =
-        "bg-gradient-to-br from-green-300 via-emerald-200 to-lime-100";
-      message = "🌳 Jungle Morning - Fresh and alive";
-    } else if (points < 1250) {
-      background = "bg-gradient-to-br from-slate-400 via-gray-300 to-blue-200";
-      message = "🌧️ Rainy Road - Reflective moment";
-    } else if (points < 1500) {
-      background =
-        "bg-gradient-to-br from-orange-200 via-red-100 to-yellow-100";
-      message = "🏪 Marketplace - Vibrant energy";
-    } else {
-      background = "bg-gradient-to-br from-sky-300 via-slate-200 to-blue-100";
-      message = "🏙️ High-rise View - You've reached the top!";
-    }
-
-    // Check if background changed
-    if (
-      lastBackgroundRef.current !== background &&
-      lastBackgroundRef.current !== null
-    ) {
-      setBackgroundMessage(message);
-      setShowBackgroundChange(true);
-      setTimeout(() => setShowBackgroundChange(false), 3000);
-    }
-    lastBackgroundRef.current = background;
-
-    return background;
-  };
-
-  // Calculate speed based on session time
-  // Speed scale: 1 (slowest) to 10 (fastest) - Starting at 3
-  const getSpeed = () => {
-    if (!gameStartTimeRef.current) return 0.3;
-
-    // Asma ul Husna Mode: Fixed speed at 0.3 (slower, more contemplative)
-    if (gameModeRef.current === "asma") {
-      return 0.3;
-    }
-
-    // Focus and Tasbih Modes: Fixed speed at 0.5 (running pace)
-    return 0.5;
-  };
 
   // Create particle burst effect on unlock
   const createParticleBurst = (
