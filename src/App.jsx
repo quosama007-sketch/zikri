@@ -1,19 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   Trophy,
-  Heart,
   Pause,
   Play,
   Lock,
   Unlock,
   LogOut,
   User,
-  Award,
-  TrendingUp,
   Sparkles,
   Star,
   Flame,
-  Clock,
   Target,
   Zap,
   Crown,
@@ -23,12 +19,10 @@ import {
   Shield,
   Calendar,
   Bell,
-  BellOff,
   Share2,
   Download,
   ExternalLink,
 } from "lucide-react";
-
 import {
   ZIKR_PHRASES,
   NAMES_OF_ALLAH,
@@ -50,43 +44,13 @@ import {
   updateDailyStats,
   getAchievementById,
 } from "./services/game";
-
-// Custom CSS for badge animations
-const badgeStyles = `
-  @keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-  }
-  
-  @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-  }
-  
-  @keyframes glow-pulse {
-    0%, 100% { opacity: 0.6; }
-    50% { opacity: 1; }
-  }
-  
-  .animate-shimmer {
-    animation: shimmer 3s infinite;
-  }
-  
-  .animate-float {
-    animation: float 3s ease-in-out infinite;
-  }
-  
-  .animate-glow-pulse {
-    animation: glow-pulse 2s ease-in-out infinite;
-  }
-`;
-
-// Inject styles
-if (typeof document !== "undefined") {
-  const styleSheet = document.createElement("style");
-  styleSheet.textContent = badgeStyles;
-  document.head.appendChild(styleSheet);
-}
+import {
+  validateCredentials,
+  getFriendlyErrorMessage,
+  formatNumber,
+  calculatePercentage,
+  debounce,
+} from "./services/utilities";
 
 // Firebase imports
 import { onAuthStateChanged } from "firebase/auth";
@@ -134,6 +98,42 @@ import {
   downloadImage,
   getShareData,
 } from "./sharing-service";
+// Custom CSS for badge animations
+const badgeStyles = `
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  @keyframes glow-pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+  
+  .animate-shimmer {
+    animation: shimmer 3s infinite;
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .animate-glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+`;
+
+// Inject styles
+if (typeof document !== "undefined") {
+  const styleSheet = document.createElement("style");
+  styleSheet.textContent = badgeStyles;
+  document.head.appendChild(styleSheet);
+}
 
 const ZikrGame = () => {
   // Auth state
@@ -510,24 +510,10 @@ const ZikrGame = () => {
 
   // Auth functions
   const handleAuth = async () => {
-    if (!username || !password) {
-      alert("Please enter username and password");
-      return;
-    }
+    const validation = validateCredentials(username, password, isSignUp);
 
-    // Username validation (case-sensitive, any characters allowed)
-    if (username.trim().length < 3) {
-      alert(
-        "⚠️ Username Too Short\n\nUsername must be at least 3 characters long.",
-      );
-      return;
-    }
-
-    // Password length validation for signup
-    if (isSignUp && password.length < 6) {
-      alert(
-        "⚠️ Password Too Short\n\nPassword must be at least 6 characters long.",
-      );
+    if (!validation.isValid) {
+      alert(validation.error);
       return;
     }
 
@@ -611,42 +597,12 @@ const ZikrGame = () => {
       console.log("✅ Logged in successfully");
     } else {
       // Convert Firebase error codes to friendly messages
-      const friendlyError = getFriendlyErrorMessage(result.error);
+      const friendlyError = getFriendlyErrorMessage(result.error, username);
       alert(friendlyError);
     }
   };
 
   // Convert Firebase error codes to user-friendly messages
-  const getFriendlyErrorMessage = (error) => {
-    if (!error) return "Authentication failed. Please try again.";
-
-    const errorString = error.toString().toLowerCase();
-
-    if (errorString.includes("username") && errorString.includes("exist")) {
-      return `❌ Username Already Taken\n\nThe username "${username}" is already taken.\n\nPlease choose a different username.`;
-    }
-    if (
-      errorString.includes("user-not-found") ||
-      errorString.includes("invalid")
-    ) {
-      return "❌ Invalid Credentials\n\nUsername or password is incorrect.\n\nPlease check and try again.";
-    }
-    if (errorString.includes("wrong-password")) {
-      return "❌ Incorrect Password\n\nThe password you entered is incorrect.\n\nPlease try again.";
-    }
-    if (errorString.includes("weak-password")) {
-      return "⚠️ Weak Password\n\nPassword must be at least 6 characters long.\n\nPlease choose a stronger password.";
-    }
-    if (errorString.includes("too-many-requests")) {
-      return "⚠️ Too Many Attempts\n\nToo many failed login attempts.\n\nPlease try again in a few minutes.";
-    }
-    if (errorString.includes("network")) {
-      return "📡 Network Error\n\nPlease check your internet connection and try again.";
-    }
-
-    // Default friendly message
-    return "❌ Authentication Error\n\nSomething went wrong. Please try again.\n\nIf the problem persists, contact support.";
-  };
 
   const handleLogout = async () => {
     const result = await logoutUser();
@@ -2424,14 +2380,10 @@ const ZikrGame = () => {
     const newTotalPoints = totalPoints + finalSessionScore;
     setTotalPoints(newTotalPoints);
 
-    const accuracy =
-      sessionStats.totalTaps > 0
-        ? Math.round(
-            (sessionStats.totalTaps /
-              (sessionStats.totalTaps + sessionStats.missedPhrases)) *
-              100,
-          )
-        : 0;
+    const accuracy = calculatePercentage(
+      sessionStats.totalTaps,
+      sessionStats.totalTaps + sessionStats.missedPhrases,
+    );
 
     console.log("[END GAME] Saving progress with:");
     console.log("  - Game Mode:", gameMode);
@@ -2572,6 +2524,9 @@ const ZikrGame = () => {
     return () => stopGameLoop();
   }, []);
 
+  // Debounced version (waits 500ms after user stops typing)
+  const debouncedUsernameCheck = debounce(checkUsernameAvailability, 500);
+
   // Auth screen
   if (showAuth) {
     return (
@@ -2600,7 +2555,7 @@ const ZikrGame = () => {
                   setUsername(e.target.value);
                   // Check availability in real-time for signup
                   if (isSignUp && e.target.value.length >= 3) {
-                    checkUsernameAvailability(e.target.value);
+                    debouncedUsernameCheck(e.target.value);
                   } else {
                     setUsernameAvailable(null);
                   }
@@ -3338,8 +3293,7 @@ const ZikrGame = () => {
 
             <div className="space-y-3">
               {viewData.map((item, index) => {
-                const percentage =
-                  maxValue > 0 ? (item.value / maxValue) * 100 : 0;
+                const percentage = calculatePercentage(item.value, maxValue);
                 const isToday =
                   item.date.toDateString() === new Date().toDateString();
 
@@ -3494,7 +3448,7 @@ const ZikrGame = () => {
                 <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-4 rounded-xl border border-emerald-200">
                   <p className="text-sm text-emerald-600 mb-1">Total Points</p>
                   <p className="text-xl font-bold text-emerald-700 break-words">
-                    {totalPoints.toLocaleString()}
+                    {formatNumber(totalPoints)}
                   </p>
                 </div>
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
@@ -4115,7 +4069,7 @@ const ZikrGame = () => {
                     currentUser?.displayName ||
                     "A Zakir";
                   const avatarEmoji = avatarEmojis[profileAvatar] || "🕊️";
-                  const shareText = `${avatarEmoji} ${displayName} here!\\n\\n🕌 I've earned ${totalPoints.toLocaleString()} points on Zikri!\\n📿 Current streak: ${currentUser?.currentStreak || 0} days\\n\\nJoin me in remembering Allah! 🌟`;
+                  const shareText = `${avatarEmoji} ${displayName} here!\\n\\n🕌 I've earned ${formatNumber(totalPoints)} points on Zikri!\\n📿 Current streak: ${currentUser?.currentStreak || 0} days\\n\\nJoin me in remembering Allah! 🌟`;
                   if (navigator.share) {
                     navigator
                       .share({
@@ -4477,15 +4431,10 @@ const ZikrGame = () => {
                   }
 
                   const newTotalPoints = totalPoints + finalSessionScore;
-                  const accuracy =
-                    sessionStats.totalTaps > 0
-                      ? Math.round(
-                          (sessionStats.totalTaps /
-                            (sessionStats.totalTaps +
-                              sessionStats.missedPhrases)) *
-                            100,
-                        )
-                      : 0;
+                  const accuracy = calculatePercentage(
+                    sessionStats.totalTaps,
+                    sessionStats.totalTaps + sessionStats.missedPhrases,
+                  );
 
                   console.log("[QUIT] Saving progress:");
                   console.log("  - Game Mode:", gameMode);
@@ -4641,7 +4590,7 @@ const ZikrGame = () => {
               <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-4 border-2 border-emerald-200">
                 <p className="text-gray-600 text-sm mb-1">Points Earned</p>
                 <p className="text-2xl font-bold text-emerald-600 break-words">
-                  +{sessionScore.toLocaleString()}
+                  +{formatNumber(sessionScore)}
                 </p>
               </div>
             )}
@@ -4865,7 +4814,7 @@ const ZikrGame = () => {
                   Total Points
                 </p>
                 <p className="text-2xl font-bold text-[#4f46e5] dark:text-emerald-400 break-words">
-                  {totalPoints.toLocaleString()}
+                  {formatNumber(totalPoints)}
                 </p>
               </div>
               <div className="bg-gradient-to-r from-[#e0e7ff] to-[#f8fafc] dark:from-gray-700 dark:to-gray-600 rounded-2xl p-4 border border-[#cbd5e1] dark:border-gray-600">
@@ -5009,7 +4958,7 @@ const ZikrGame = () => {
                         +{phrase.points} pts
                       </span>
                       <span className="text-sm font-bold text-[#10b981] bg-[#d1fae5] px-3 py-1 rounded-full">
-                        {phraseCount.toLocaleString()} times
+                        {formatNumber(phraseCount)} times
                       </span>
                     </div>
                   </div>
@@ -5643,7 +5592,7 @@ const ZikrGame = () => {
                             +{phrase.points} pts
                           </span>
                           <span className="text-sm font-bold text-[#10b981] bg-[#d1fae5] px-3 py-1 rounded-full">
-                            {phraseCount.toLocaleString()} times
+                            {formatNumber(phraseCount)} times
                           </span>
                         </div>
                       </div>

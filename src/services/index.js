@@ -6,4 +6,4 @@
 
 export * from "./game";
 // export * from './audio';
-// export * from './utilities';
+export * from "./utilities";
