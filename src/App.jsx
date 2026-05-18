@@ -376,6 +376,8 @@ const ZikrGame = () => {
   const gameModeRef = useRef("focus"); // mirrors gameMode for immediate updates in loop
   const bismillahCountRef = useRef(0); // mirrors bismillahCount for immediate loop access
   const asmaTotalTapsRef = useRef(0); // mirrors asmaTotalTaps — prevents state timing issues
+  const newlyUnlockedPhrasesRef = useRef({}); // mirrors newlyUnlockedPhrases for loop access
+  const newlyUnlockedAsmaNamesRef = useRef({}); // mirrors newlyUnlockedAsmaNames for loop access
   // Load user data from localStorage
   // Firebase Auth State Listener
   useEffect(() => {
@@ -1538,6 +1540,15 @@ const ZikrGame = () => {
     }
   }, [isPaused, gameMode, screen]);
 
+  // Keep newly-unlocked refs in sync so setInterval callbacks always read current values
+  useEffect(() => {
+    newlyUnlockedPhrasesRef.current = newlyUnlockedPhrases;
+  }, [newlyUnlockedPhrases]);
+
+  useEffect(() => {
+    newlyUnlockedAsmaNamesRef.current = newlyUnlockedAsmaNames;
+  }, [newlyUnlockedAsmaNames]);
+
   // Start game
   const startGame = (mode = gameMode) => {
     console.log(
@@ -1744,8 +1755,11 @@ const ZikrGame = () => {
     }
 
     // Pure: check if this item should show the golden newly-unlocked highlight
+    // Read from refs (not state) — avoids stale closure inside setInterval
     const newlyUnlockedMap =
-      currentMode === "asma" ? newlyUnlockedAsmaNames : newlyUnlockedPhrases;
+      currentMode === "asma"
+        ? newlyUnlockedAsmaNamesRef.current
+        : newlyUnlockedPhrasesRef.current;
     const isNewlyUnlocked = isNewlyUnlockedItem(randomItem.id, newlyUnlockedMap);
 
     // Pure: build phrase object with non-overlapping position (inside updater for current phrases)
