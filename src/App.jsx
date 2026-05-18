@@ -136,33 +136,51 @@ if (typeof document !== "undefined") {
 }
 
 const ZikrGame = () => {
-  // Auth state
+  // ============================================================
+  // ZIKRI APP — STATE VARIABLES
+  // Organized for Flutter migration | See FLUTTER_ARCHITECTURE_PLAN.md
+  // ============================================================
+
+  // ============================================================
+  // 1. AUTH STATE
+  // Flutter → lib/providers/auth_provider.dart
+  // Flutter screens → login_screen.dart | register_screen.dart
+  // ============================================================
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showAuth, setShowAuth] = useState(true);
   const [isSignUp, setIsSignUp] = useState(false);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [currentUser, setCurrentUser] = useState(null);
-  const [usernameAvailable, setUsernameAvailable] = useState(null); // null = not checked, true = available, false = taken
+  const [username, setUsername] = useState(""); // form field only — not persisted
+  const [password, setPassword] = useState(""); // form field only — never stored
+  const [currentUser, setCurrentUser] = useState(null); // full user object from Firebase
+  const [usernameAvailable, setUsernameAvailable] = useState(null); // null=unchecked | true=available | false=taken
   const [checkingUsername, setCheckingUsername] = useState(false);
 
-  // Game state
-  const [screen, setScreen] = useState("menu"); // menu, game, stats, profile, leaderboard, achievements, mode-select, tasbih-setup
-  const [gameMode, setGameMode] = useState("focus"); // focus, names, arcade, tasbih
-  const [totalPoints, setTotalPoints] = useState(0);
-  const [sessionScore, setSessionScore] = useState(0);
-  const [asmaSessionScore, setAsmaSessionScore] = useState(0); // Track Asma mode points
-  const [tasbihSessionScore, setTasbihSessionScore] = useState(0); // Track Tasbih mode points
+  // ============================================================
+  // 2. NAVIGATION STATE
+  // Flutter → MaterialApp routes | bottom nav index
+  // ============================================================
+  const [screen, setScreen] = useState("menu"); // menu | game | stats | profile | leaderboard | achievements | mode-select | tasbih-setup
+
+  // ============================================================
+  // 3. CORE GAME STATE
+  // Flutter → lib/providers/game_provider.dart
+  // Flutter screen → game_screen.dart
+  // ============================================================
+  const [gameMode, setGameMode] = useState("focus"); // focus | names | arcade | tasbih
+  const [totalPoints, setTotalPoints] = useState(0); // persisted to Firebase
+  const [sessionScore, setSessionScore] = useState(0); // current session (Focus mode)
+  const [asmaSessionScore, setAsmaSessionScore] = useState(0); // current session (Names mode)
+  const [tasbihSessionScore, setTasbihSessionScore] = useState(0); // current session (Tasbih mode)
   const [lives, setLives] = useState(5);
   const [consecutiveMisses, setConsecutiveMisses] = useState(0);
-  const [bismillahCount, setBismillahCount] = useState(0); // Track total Bismillah spawns
-  const [bismillahHelpCount, setBismillahHelpCount] = useState(0); // Track "help" Bismillah spawns after misses
-  const [phrases, setPhrases] = useState([]);
+  const [bismillahCount, setBismillahCount] = useState(0); // total Bismillah spawns
+  const [bismillahHelpCount, setBismillahHelpCount] = useState(0); // "help" spawns after misses
+  const [phrases, setPhrases] = useState([]); // active falling phrases on screen
   const [isPaused, setIsPaused] = useState(false);
   const [gameStartTime, setGameStartTime] = useState(null);
-  const [newlyUnlockedPhrases, setNewlyUnlockedPhrases] = useState({}); // Track newly unlocked phrases and their appearance count
-  const [newlyUnlockedAsmaNames, setNewlyUnlockedAsmaNames] = useState({}); // Track newly unlocked Asma names and their appearance count
-  const [totalPhrasesAppeared, setTotalPhrasesAppeared] = useState(0); // Track total phrases that appeared
+  const [newlyUnlockedPhrases, setNewlyUnlockedPhrases] = useState({}); // { phraseId: appearCount }
+  const [newlyUnlockedAsmaNames, setNewlyUnlockedAsmaNames] = useState({}); // { asmaId: appearCount }
+  const [totalPhrasesAppeared, setTotalPhrasesAppeared] = useState(0);
   const [sessionStats, setSessionStats] = useState({
     totalTaps: 0,
     missedPhrases: 0,
@@ -170,80 +188,77 @@ const ZikrGame = () => {
     duration: 0,
   });
 
-  // Session tracking for stats
-  const [sessionStartAsmaCount, setSessionStartAsmaCount] = useState(0); // Track Asma names at session start
-  const [tasbihCompleted, setTasbihCompleted] = useState(false); // Track if Tasbih goal was reached
+  // ============================================================
+  // 4. SESSION TRACKING
+  // Flutter → part of game_provider.dart
+  // ============================================================
+  const [sessionStartAsmaCount, setSessionStartAsmaCount] = useState(0); // Asma names unlocked at session start
+  const [tasbihCompleted, setTasbihCompleted] = useState(false); // Did user hit Tasbih goal this session?
 
-  // Tasbih Mode specific state (formerly Tasbih)
+  // ============================================================
+  // 5. TASBIH MODE STATE
+  // Flutter → lib/providers/tasbih_provider.dart
+  // Flutter screen → tasbih_screen.dart | tasbih_setup_screen.dart
+  // ============================================================
   const [tasbihSelectedPhrase, setTasbihSelectedPhrase] = useState(null);
   const [tasbihTargetCount, setTasbihTargetCount] = useState(100);
   const [tasbihCurrentCount, setTasbihCurrentCount] = useState(0);
-  const [tasbihTotalCounts, setTasbihTotalCounts] = useState({}); // Track total counts per phrase in Tasbih mode
+  const [tasbihTotalCounts, setTasbihTotalCounts] = useState({}); // { phraseId: totalCount } — persisted to Firebase
 
-  // Asma ul Husna tap counter (for 33-tap unlock system)
-  const [asmaTotalTaps, setAsmaTotalTaps] = useState(0); // Cumulative taps across all sessions
+  // ============================================================
+  // 6. ASMA UL HUSNA STATE
+  // Flutter → part of game_provider.dart
+  // Unlock logic: every 33 taps unlocks next name
+  // ============================================================
+  const [asmaTotalTaps, setAsmaTotalTaps] = useState(0); // cumulative taps across all sessions — persisted
 
-  // Background change notification
+  // ============================================================
+  // 7. BACKGROUND & VISUAL STATE
+  // Flutter → lib/providers/theme_provider.dart
+  // ============================================================
   const [showBackgroundChange, setShowBackgroundChange] = useState(false);
   const [backgroundMessage, setBackgroundMessage] = useState("");
-  const lastBackgroundRef = useRef(null);
-
-  // Dynamic Background & Audio System (Focus Mode)
+  const lastBackgroundRef = useRef(null); // ref — tracks last background to avoid repeat
   const [currentBackgroundIndex, setCurrentBackgroundIndex] = useState(1);
-  const [isAudioMuted, setIsAudioMuted] = useState(false);
-  const [phraseSpeed, setPhraseSpeed] = useState(2); // 1=Slow, 2=Medium, 3=Fast
-  const [userDisplayName, setUserDisplayName] = useState(""); // Editable display name
-  const [userGender, setUserGender] = useState(""); // 'male', 'female', or ''
-  const [leaderboardVisible, setLeaderboardVisible] = useState(true); // Leaderboard visibility
-  const [profileAvatar, setProfileAvatar] = useState("dove"); // Selected animal avatar
-  const [darkMode, setDarkMode] = useState(false); // Dark mode toggle
+  const [darkMode, setDarkMode] = useState(false); // persisted to Firebase
+
+  // ============================================================
+  // 8. USER PROFILE & PREFERENCES
+  // Flutter → lib/providers/user_provider.dart
+  // Flutter screen → profile_screen.dart | settings_screen.dart
+  // All fields persisted to Firebase
+  // ============================================================
+  const [userDisplayName, setUserDisplayName] = useState(""); // editable display name
+  const [userGender, setUserGender] = useState(""); // 'male' | 'female' | ''
+  const [profileAvatar, setProfileAvatar] = useState("dove"); // selected animal avatar
+  const [leaderboardVisible, setLeaderboardVisible] = useState(true); // opt-out of leaderboard
+  const [phraseSpeed, setPhraseSpeed] = useState(2); // 1=Slow | 2=Medium | 3=Fast
+
+  // ============================================================
+  // 9. NOTIFICATION STATE
+  // Flutter → lib/services/notification_service.dart
+  // ============================================================
   const [notificationSettings, setNotificationSettings] = useState(
     DEFAULT_NOTIFICATION_SETTINGS,
-  ); // Notification settings
+  ); // persisted to Firebase
   const [notificationPermission, setNotificationPermission] =
-    useState("default"); // Notification permission status
+    useState("default"); // 'default' | 'granted' | 'denied'
 
-  // Streak Shield Notification
-  const [showStreakShieldUsed, setShowStreakShieldUsed] = useState(false);
-  const [shieldUsageInfo, setShieldUsageInfo] = useState({
-    oldCount: 0,
-    newCount: 0,
-  });
-
-  // Virtue One-Liners System
-  const [showVirtuePopup, setShowVirtuePopup] = useState(false);
-  const [currentVirtue, setCurrentVirtue] = useState(null);
-  const [unlockedVirtues, setUnlockedVirtues] = useState([]);
-  const [phraseTapCounts, setPhraseTapCounts] = useState({}); // Track taps per phrase for virtue unlocks
-
-  // ✨ Zikr Fact state
-  const [currentZikrFact, setCurrentZikrFact] = useState(null);
-
-  // Social Sharing System
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [shareData, setShareData] = useState(null);
-  const [sharingCardUrl, setSharingCardUrl] = useState(null);
-  const [isGeneratingCard, setIsGeneratingCard] = useState(false);
-
-  // PWA Install
-  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-
+  // ============================================================
+  // 10. AUDIO STATE
+  // Flutter → lib/services/audio_service.dart
+  // Background music + sound effects + phrase audio are 3 separate systems
+  // ============================================================
+  // Background music
+  const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isAudioLoaded, setIsAudioLoaded] = useState(false);
   const audioRef = useRef(null);
-  const nextAudioRef = useRef(null); // For preloading
-  const isFadingRef = useRef(false);
+  const nextAudioRef = useRef(null); // preloading next track
+  const isFadingRef = useRef(false); // prevents fade overlap
 
-  // Sound Effects System
+  // Sound effects
   const [soundsLoaded, setSoundsLoaded] = useState(false);
   const [soundsEnabled, setSoundsEnabled] = useState(true);
-
-  // Phrase Audio System (NEW!)
-  const [phraseAudioEnabled, setPhraseAudioEnabled] = useState(true);
-  const [phraseAudioVolume, setPhraseAudioVolume] = useState(0.7); // 70% default
-  const [phraseAudioLoaded, setPhraseAudioLoaded] = useState(false);
-  const phraseAudioRefs = useRef({}); // Will hold zikr_1.mp3 to zikr_27.mp3
-
   const soundRefs = useRef({
     tapSuccess: null,
     phraseMiss: null,
@@ -251,42 +266,106 @@ const ZikrGame = () => {
     completion: null,
   });
   const soundVolumes = {
-    tapSuccess: 0.6, // 60%
-    phraseMiss: 0.4, // 40%
-    phraseUnlock: 0.8, // 80%
-    completion: 0.9, // 90%
+    tapSuccess: 0.6,
+    phraseMiss: 0.4,
+    phraseUnlock: 0.8,
+    completion: 0.9,
   };
 
-  // Streak Freeze Token System
+  // Phrase audio (zikr_1.mp3 → zikr_27.mp3)
+  const [phraseAudioEnabled, setPhraseAudioEnabled] = useState(true);
+  const [phraseAudioVolume, setPhraseAudioVolume] = useState(0.7); // 70% default
+  const [phraseAudioLoaded, setPhraseAudioLoaded] = useState(false);
+  const phraseAudioRefs = useRef({}); // { 1: AudioObject, 2: AudioObject, ... }
+
+  // ============================================================
+  // 11. STREAK & FREEZE TOKEN STATE
+  // Flutter → lib/providers/streak_provider.dart
+  // Logic: 1 token per 30,000 total points; tokens protect missed days
+  // ============================================================
   const [showTokenEarned, setShowTokenEarned] = useState(false);
   const [showTokenUsed, setShowTokenUsed] = useState(false);
   const [tokenUsedMessage, setTokenUsedMessage] = useState("");
   const [showFreezeCalendar, setShowFreezeCalendar] = useState(false);
   const [selectedFreezeDates, setSelectedFreezeDates] = useState([]);
 
-  // Achievement Notification System
+  // Streak shield notification popup
+  const [showStreakShieldUsed, setShowStreakShieldUsed] = useState(false);
+  const [shieldUsageInfo, setShieldUsageInfo] = useState({
+    oldCount: 0,
+    newCount: 0,
+  });
+
+  // ============================================================
+  // 12. ACHIEVEMENT STATE
+  // Flutter → lib/providers/achievement_provider.dart
+  // Flutter screen → achievements_screen.dart
+  // ============================================================
   const [showAchievementUnlocked, setShowAchievementUnlocked] = useState(false);
   const [unlockedAchievementIds, setUnlockedAchievementIds] = useState([]);
 
-  // Calendar Activity Tracker
-  const [calendarMetric, setCalendarMetric] = useState("taps"); // 'taps', 'points', 'time'
-  const [calendarView, setCalendarView] = useState("week"); // 'day', 'week', 'month', 'year'
+  // ============================================================
+  // 13. VIRTUE ONE-LINERS SYSTEM
+  // Flutter → part of game_provider.dart (triggered on phrase tap milestones)
+  // ============================================================
+  const [showVirtuePopup, setShowVirtuePopup] = useState(false);
+  const [currentVirtue, setCurrentVirtue] = useState(null);
+  const [unlockedVirtues, setUnlockedVirtues] = useState([]);
+  const [phraseTapCounts, setPhraseTapCounts] = useState({}); // { phraseId: count } — persisted to Firebase
+
+  // ============================================================
+  // 14. ZIKR FACTS SYSTEM
+  // Flutter → widget shown between sessions or on phrase unlock
+  // ============================================================
+  const [currentZikrFact, setCurrentZikrFact] = useState(null);
+
+  // ============================================================
+  // 15. SOCIAL SHARING STATE
+  // Flutter → lib/services/sharing_service.dart
+  // Flutter screen → share_modal.dart
+  // ============================================================
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareData, setShareData] = useState(null);
+  const [sharingCardUrl, setSharingCardUrl] = useState(null);
+  const [isGeneratingCard, setIsGeneratingCard] = useState(false);
+
+  // ============================================================
+  // 16. LEADERBOARD STATE
+  // Flutter → lib/providers/leaderboard_provider.dart
+  // Flutter screen → leaderboard_screen.dart
+  // ============================================================
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [leaderboardUserContext, setLeaderboardUserContext] = useState([]); // user's surrounding rows
+
+  // ============================================================
+  // 17. CALENDAR ACTIVITY TRACKER STATE
+  // Flutter → lib/screens/stats_screen.dart
+  // ============================================================
+  const [calendarMetric, setCalendarMetric] = useState("taps"); // 'taps' | 'points' | 'time'
+  const [calendarView, setCalendarView] = useState("week"); // 'day' | 'week' | 'month' | 'year'
   const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // Leaderboard state
-  const [leaderboardData, setLeaderboardData] = useState([]);
-  const [leaderboardUserContext, setLeaderboardUserContext] = useState([]);
+  // ============================================================
+  // 18. PWA INSTALL STATE
+  // Flutter → N/A (native app handles install natively)
+  // ============================================================
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
 
-  const gameLoopRef = useRef(null);
-  const nextPhraseIdRef = useRef(0);
-  const gameStartTimeRef = useRef(null);
-  const previouslyUnlockedRef = useRef(new Set([1, 2, 3, 4])); // Track what was unlocked before this session
-  const sessionScoreRef = useRef(0); // Track session score in ref for real-time access
-  const tasbihCurrentCountRef = useRef(0); // Track Tasbih count in ref for real-time access (renamed from tasbih)
-  const gameModeRef = useRef("focus"); // Track game mode in ref for immediate updates
-  const bismillahCountRef = useRef(0); // Track Bismillah count in ref for immediate access
-  const asmaTotalTapsRef = useRef(0); // Track Asma taps in ref for immediate access (prevents state timing issues)
-
+  // ============================================================
+  // 19. PERFORMANCE REFS (no Flutter equivalent — React-specific)
+  // These are refs that mirror state for synchronous access in
+  // async game loop callbacks. Flutter uses streams/notifiers instead.
+  // ============================================================
+  const gameLoopRef = useRef(null); // setTimeout/setInterval handle
+  const nextPhraseIdRef = useRef(0); // auto-increment ID for falling phrases
+  const gameStartTimeRef = useRef(null); // mirrors gameStartTime for loop access
+  const previouslyUnlockedRef = useRef(new Set([1, 2, 3, 4])); // phrases unlocked before this session
+  const sessionScoreRef = useRef(0); // mirrors sessionScore for real-time loop access
+  const tasbihCurrentCountRef = useRef(0); // mirrors tasbihCurrentCount for real-time loop access
+  const gameModeRef = useRef("focus"); // mirrors gameMode for immediate updates in loop
+  const bismillahCountRef = useRef(0); // mirrors bismillahCount for immediate loop access
+  const asmaTotalTapsRef = useRef(0); // mirrors asmaTotalTaps — prevents state timing issues
   // Load user data from localStorage
   // Firebase Auth State Listener
   useEffect(() => {
