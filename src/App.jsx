@@ -4085,8 +4085,9 @@ const ZikrGame = () => {
                   <div className="h-8 w-px bg-gray-300"></div>
                   <div className="flex items-center gap-2">
                     <div className="text-lg font-bold text-purple-600">
-                      {asmaTotalTaps}
+                      {asmaSessionScore}
                     </div>
+                    <div className="text-gray-600 text-sm">pts</div>
                   </div>
                   <div className="h-8 w-px bg-gray-300"></div>
                   <div className="flex items-center gap-2">
