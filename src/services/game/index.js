@@ -7,3 +7,4 @@
 export * from "./calculations";
 export * from "./effects";
 export * from "./achievements";
+export * from "./gameLoop";

@@ -43,6 +43,16 @@ import {
   checkTokenEarning,
   updateDailyStats,
   getAchievementById,
+  computeSpawnAvailableItems,
+  selectItemToSpawn,
+  isNewlyUnlockedItem,
+  buildFallingPhrase,
+  tickPhrases,
+  checkNewlyUnlockedItems,
+  shouldPlayMissSound,
+  shouldEndGame,
+  computeInitialUnlocked,
+  computeEndGameStats,
 } from "./services/game";
 import {
   validateCredentials,
@@ -1548,21 +1558,12 @@ const ZikrGame = () => {
 
     // Small delay to ensure cleanup completes
     setTimeout(() => {
-      // Determine which items to check based on game mode
-      let allItems = [];
-      if (mode === "focus") {
-        allItems = ZIKR_PHRASES;
-      } else if (mode === "asma") {
-        allItems = NAMES_OF_ALLAH;
-      } else if (mode === "tasbih") {
-        allItems = tasbihSelectedPhrase ? [tasbihSelectedPhrase] : [];
-      }
-
       // Set previously unlocked based on current total points
-      const currentUnlocked = allItems
-        .filter((p) => p.unlockAt <= totalPoints)
-        .map((p) => p.id);
-      previouslyUnlockedRef.current = new Set(currentUnlocked);
+      previouslyUnlockedRef.current = computeInitialUnlocked(
+        mode,
+        totalPoints,
+        tasbihSelectedPhrase,
+      );
 
       setScreen("game");
 
@@ -1710,232 +1711,52 @@ const ZikrGame = () => {
 
   // Spawn a new phrase
   const spawnPhrase = () => {
+    const currentMode = gameModeRef.current;
     const currentTotal = totalPoints + sessionScoreRef.current;
-    const currentMode = gameModeRef.current; // Use ref for immediate value
 
-    let availableItems = [];
-
-    // Determine which items to use based on game mode
-    if (currentMode === "focus") {
-      // Focus Mode: Only zikr phrases (point-based)
-      availableItems = ZIKR_PHRASES.filter((p) => p.unlockAt <= currentTotal);
-      console.log(
-        `[FOCUS MODE] Spawning from ${availableItems.length} unlocked ZIKR_PHRASES`,
-      );
-    } else if (currentMode === "asma") {
-      // ✅ BUG FIX: Use ref for immediate access (state updates are async!)
-      const currentTaps = asmaTotalTapsRef.current;
-      const unlockedIds = getUnlockedAsmaIds(currentTaps);
-      availableItems = NAMES_OF_ALLAH.filter((n) => unlockedIds.includes(n.id));
-      console.log(
-        `[ASMA MODE] Spawning from ${availableItems.length} unlocked names (${currentTaps} total taps - from ref)`,
-      );
-      console.log(
-        `[ASMA MODE] Available name IDs: ${availableItems.map((n) => n.id).join(", ")}`,
-      );
-      console.log(
-        `[ASMA MODE] Available names: ${availableItems.map((n) => n.transliteration).join(", ")}`,
-      );
-    } else if (currentMode === "tasbih") {
-      // Tasbih Mode: Only the selected phrase
-      availableItems = tasbihSelectedPhrase ? [tasbihSelectedPhrase] : [];
-      console.log(
-        `[TASBIH MODE] Spawning selected phrase: ${tasbihSelectedPhrase?.transliteration || "none"}`,
-      );
-    }
+    // Pure: compute which items are available to spawn
+    const availableItems = computeSpawnAvailableItems(
+      currentMode,
+      currentTotal,
+      asmaTotalTapsRef.current,
+      tasbihSelectedPhrase,
+    );
 
     if (availableItems.length === 0) return;
 
-    let randomItem;
+    // Pure: select which item to spawn (probability distribution + Bismillah logic)
+    const randomItem = selectItemToSpawn(
+      currentMode,
+      availableItems,
+      bismillahCountRef.current,
+    );
+    if (!randomItem) return;
 
-    // Tasbih mode: Always use the selected phrase (skip probability distribution)
-    if (currentMode === "tasbih") {
-      if (!tasbihSelectedPhrase) {
-        console.error("[TASBIH MODE ERROR] No phrase selected!");
-        return;
-      }
-      randomItem = tasbihSelectedPhrase;
+    // Update Bismillah counter after force-spawn (Focus mode, first 3 spawns)
+    if (currentMode === "focus" && bismillahCountRef.current < 3) {
+      bismillahCountRef.current += 1;
+      setBismillahCount((prev) => prev + 1);
       console.log(
-        `[TASBIH MODE] ✓ Spawning: ${randomItem.transliteration} (${randomItem.arabic})`,
+        `[BISMILLAH] Initial spawn ${bismillahCountRef.current}/3 - ref now: ${bismillahCountRef.current}`,
       );
-    } else {
-      // SPECIAL BISMILLAH LOGIC: Force Bismillah for first 3 spawns OR 2 times after 3 consecutive misses
-      if (currentMode === "focus") {
-        if (bismillahCountRef.current < 3) {
-          // Force Bismillah for first 3 times only
-          randomItem = ZIKR_PHRASES[0]; // Bismillah
-          bismillahCountRef.current += 1; // INCREMENT IMMEDIATELY
-          setBismillahCount((prev) => prev + 1); // Update state too
-          console.log(
-            `[BISMILLAH] Initial spawn ${bismillahCountRef.current}/3 - ref now: ${bismillahCountRef.current}`,
-          );
-        } else {
-          // ✅ BUG FIX: Removed "help spawn" logic that caused Bismillah spam
-          // Normal spawning - FILTER OUT BISMILLAH from available items
-          const itemsWithoutBismillah = availableItems.filter(
-            (p) => p.id !== 1,
-          );
-
-          console.log(
-            `[DEBUG] bismillahCountRef.current: ${bismillahCountRef.current}`,
-          );
-          console.log(`[DEBUG] bismillahCount state: ${bismillahCount}`);
-          console.log(
-            `[DEBUG] availableItems.length: ${availableItems.length}`,
-          );
-          console.log(
-            `[DEBUG] itemsWithoutBismillah.length: ${itemsWithoutBismillah.length}`,
-          );
-          console.log(
-            `[DEBUG] itemsWithoutBismillah IDs: ${itemsWithoutBismillah.map((p) => p.id).join(", ")}`,
-          );
-
-          if (itemsWithoutBismillah.length === 0) {
-            // Edge case: Only Bismillah is unlocked (shouldn't happen, but handle it)
-            console.warn(
-              "[WARNING] Only Bismillah available! Spawning it anyway to keep game going...",
-            );
-            randomItem = ZIKR_PHRASES[0]; // Spawn Bismillah to prevent game stall
-          } else {
-            // Categorize by word count for probability distribution
-            const twoWordItems = itemsWithoutBismillah.filter(
-              (p) => p.wordCount === 2,
-            );
-            const threeWordItems = itemsWithoutBismillah.filter(
-              (p) => p.wordCount === 3,
-            );
-            const fourWordItems = itemsWithoutBismillah.filter(
-              (p) => p.wordCount === 4,
-            );
-            const longerItems = itemsWithoutBismillah.filter(
-              (p) => p.wordCount > 4,
-            );
-
-            console.log(
-              `[DEBUG] 2-word: ${twoWordItems.length}, 3-word: ${threeWordItems.length}, 4-word: ${fourWordItems.length}, longer: ${longerItems.length}`,
-            );
-
-            // Probability distribution: 2-word (90%), 3-word (5%), 4-word (2%), 5+ word (3%)
-            const rand = Math.random();
-
-            if (rand < 0.9 && twoWordItems.length > 0) {
-              randomItem =
-                twoWordItems[Math.floor(Math.random() * twoWordItems.length)];
-            } else if (rand < 0.95 && threeWordItems.length > 0) {
-              randomItem =
-                threeWordItems[
-                  Math.floor(Math.random() * threeWordItems.length)
-                ];
-            } else if (rand < 0.97 && fourWordItems.length > 0) {
-              randomItem =
-                fourWordItems[Math.floor(Math.random() * fourWordItems.length)];
-            } else if (longerItems.length > 0) {
-              randomItem =
-                longerItems[Math.floor(Math.random() * longerItems.length)];
-            } else {
-              randomItem =
-                itemsWithoutBismillah[
-                  Math.floor(Math.random() * itemsWithoutBismillah.length)
-                ];
-            }
-
-            console.log(
-              `[NORMAL SPAWN] Selected: ${randomItem.transliteration} (ID: ${randomItem.id})`,
-            );
-          }
-        }
-      } else {
-        // Asma mode - normal probability
-        const twoWordItems = availableItems.filter((p) => p.wordCount === 2);
-        const threeWordItems = availableItems.filter((p) => p.wordCount === 3);
-        const fourWordItems = availableItems.filter((p) => p.wordCount === 4);
-        const longerItems = availableItems.filter((p) => p.wordCount > 4);
-
-        console.log(
-          `[ASMA MODE] Word count distribution: 2-word: ${twoWordItems.length}, 3-word: ${threeWordItems.length}, 4-word: ${fourWordItems.length}, longer: ${longerItems.length}`,
-        );
-
-        const rand = Math.random();
-
-        if (rand < 0.9 && twoWordItems.length > 0) {
-          randomItem =
-            twoWordItems[Math.floor(Math.random() * twoWordItems.length)];
-        } else if (rand < 0.95 && threeWordItems.length > 0) {
-          randomItem =
-            threeWordItems[Math.floor(Math.random() * threeWordItems.length)];
-        } else if (rand < 0.97 && fourWordItems.length > 0) {
-          randomItem =
-            fourWordItems[Math.floor(Math.random() * fourWordItems.length)];
-        } else if (longerItems.length > 0) {
-          randomItem =
-            longerItems[Math.floor(Math.random() * longerItems.length)];
-        } else {
-          randomItem =
-            availableItems[Math.floor(Math.random() * availableItems.length)];
-        }
-
-        console.log(
-          `[ASMA MODE] Selected: ${randomItem.transliteration} (ID: ${randomItem.id}, wordCount: ${randomItem.wordCount})`,
-        );
-      }
+    } else if (currentMode === "focus") {
+      console.log(`[DEBUG] bismillahCount state: ${bismillahCount}`);
     }
 
-    // Check if this item is newly unlocked (Focus or Asma mode)
-    let isNewlyUnlocked = false;
+    // Pure: check if this item should show the golden newly-unlocked highlight
+    const newlyUnlockedMap =
+      currentMode === "asma" ? newlyUnlockedAsmaNames : newlyUnlockedPhrases;
+    const isNewlyUnlocked = isNewlyUnlockedItem(randomItem.id, newlyUnlockedMap);
 
-    if (currentMode === "focus") {
-      // Check newlyUnlockedPhrases for Focus Mode
-      const currentCount = newlyUnlockedPhrases[randomItem.id];
-      isNewlyUnlocked = currentCount !== undefined && currentCount < 3;
-    } else if (currentMode === "asma") {
-      // Check newlyUnlockedAsmaNames for Asma Mode
-      const currentCount = newlyUnlockedAsmaNames[randomItem.id];
-      isNewlyUnlocked = currentCount !== undefined && currentCount < 3;
-    }
-
-    // Find a vertical position that doesn't overlap with existing phrases
-    let verticalPosition;
-    let attempts = 0;
-    const maxAttempts = 20;
-
-    // Get current phrases positions
+    // Pure: build phrase object with non-overlapping position (inside updater for current phrases)
     setPhrases((currentPhrases) => {
-      do {
-        verticalPosition = Math.random() * 60 + 20; // Random position between 20% and 80%
-
-        // Check if this position overlaps with any existing phrase
-        const hasOverlap = currentPhrases.some((p) => {
-          // Only check phrases that are still on screen (position < 100)
-          if (p.position > 100 || p.position < -25) return false;
-
-          // Check vertical distance - phrases need at least 15% spacing (reduced from 20%)
-          const verticalDistance = Math.abs(
-            p.verticalPosition - verticalPosition,
-          );
-          return verticalDistance < 15;
-        });
-
-        if (!hasOverlap) break;
-        attempts++;
-      } while (attempts < maxAttempts);
-
-      // If we couldn't find a good spot after many attempts, use a safe position
-      if (attempts >= maxAttempts) {
-        // Use one of 3 predefined lanes
-        const lanes = [25, 50, 75];
-        verticalPosition = lanes[Math.floor(Math.random() * lanes.length)];
-      }
-
-      const newPhrase = {
-        id: nextPhraseIdRef.current++,
-        data: randomItem,
-        position: -20,
-        verticalPosition: verticalPosition,
-        isNewlyUnlocked: isNewlyUnlocked,
-        phraseDataId: randomItem.id,
-      };
-
-      return [...currentPhrases, newPhrase];
+      const phraseObject = buildFallingPhrase(
+        randomItem,
+        nextPhraseIdRef.current++,
+        currentPhrases,
+        isNewlyUnlocked,
+      );
+      return [...currentPhrases, phraseObject];
     });
 
     setTotalPhrasesAppeared((prevTotal) => prevTotal + 1);
@@ -1953,14 +1774,10 @@ const ZikrGame = () => {
           console.log(
             `[ASMA NEWLY UNLOCKED] ${randomItem.transliteration} appeared ${newCount}/3 times`,
           );
-          return {
-            ...prev,
-            [randomItem.id]: newCount,
-          };
+          return { ...prev, [randomItem.id]: newCount };
         });
       }
     } else if (currentMode === "asma") {
-      // Log normal (not newly unlocked) Asma spawns
       console.log(
         `[ASMA NORMAL SPAWN] ${randomItem.transliteration} (ID: ${randomItem.id}) - this name can repeat multiple times`,
       );
@@ -1972,112 +1789,84 @@ const ZikrGame = () => {
     if (gameLoopRef.current) return;
 
     gameLoopRef.current = setInterval(() => {
-      // Check for newly unlocked items using refs for real-time access
       const currentTotal = totalPoints + sessionScoreRef.current;
-      const currentMode = gameModeRef.current; // Use ref for immediate value
+      const currentMode = gameModeRef.current;
 
-      // Determine which items to check based on game mode
-      let itemsToCheck = [];
-      if (currentMode === "focus") {
-        itemsToCheck = ZIKR_PHRASES;
-      } else if (currentMode === "asma") {
-        itemsToCheck = NAMES_OF_ALLAH;
-      } else if (currentMode === "tasbih") {
-        // Tasbih mode doesn't unlock new items during gameplay
-        itemsToCheck = [];
-      }
+      // Pure: detect items that crossed their unlock threshold this tick
+      const itemsToCheck =
+        currentMode === "focus"
+          ? ZIKR_PHRASES
+          : currentMode === "asma"
+            ? NAMES_OF_ALLAH
+            : [];
 
-      itemsToCheck.forEach((item) => {
-        // If item is unlocked now but wasn't previously unlocked
-        if (
-          item.unlockAt <= currentTotal &&
-          !previouslyUnlockedRef.current.has(item.id)
-        ) {
-          console.log(
-            `🎉 Unlocking ${currentMode === "asma" ? "name" : "phrase"} ${item.id}: ${item.transliteration} at ${currentTotal} points!`,
-          );
-          previouslyUnlockedRef.current.add(item.id);
+      const newlyUnlocked = checkNewlyUnlockedItems(
+        itemsToCheck,
+        currentTotal,
+        previouslyUnlockedRef.current,
+      );
 
-          // Trigger particle burst effect!
-          createParticleBurst(
-            window.innerWidth / 2,
-            window.innerHeight / 2,
-            "#f59e0b",
-          );
+      newlyUnlocked.forEach((item) => {
+        console.log(
+          `🎉 Unlocking ${currentMode === "asma" ? "name" : "phrase"} ${item.id}: ${item.transliteration} at ${currentTotal} points!`,
+        );
+        previouslyUnlockedRef.current.add(item.id);
 
-          // Play unlock sound
-          playSound("phraseUnlock");
+        createParticleBurst(
+          window.innerWidth / 2,
+          window.innerHeight / 2,
+          "#f59e0b",
+        );
+        playSound("phraseUnlock");
 
-          // Mark as newly unlocked based on mode
-          if (currentMode === "focus") {
-            // Focus Mode - mark in newlyUnlockedPhrases
-            setNewlyUnlockedPhrases((prev) => {
-              const updated = { ...prev, [item.id]: 0 };
-
-              // Then immediately spawn the newly unlocked item in golden!
-              setTimeout(() => {
-                const newPhrase = {
-                  id: nextPhraseIdRef.current++,
-                  data: item,
-                  position: -20,
-                  verticalPosition: Math.random() * 60 + 20,
-                  isNewlyUnlocked: true,
-                  phraseDataId: item.id,
-                };
-                setPhrases((prevPhrases) => [...prevPhrases, newPhrase]);
-                setTotalPhrasesAppeared((prevTotal) => prevTotal + 1);
-
-                // Increment the counter for this newly unlocked item
-                setNewlyUnlockedPhrases((prev2) => ({
-                  ...prev2,
-                  [item.id]: (prev2[item.id] || 0) + 1,
-                }));
-              }, 100);
-
-              return updated;
-            });
-          } else if (currentMode === "asma") {
-            // Asma Mode - mark in newlyUnlockedAsmaNames
-            setNewlyUnlockedAsmaNames((prev) => {
-              const updated = { ...prev, [item.id]: 0 };
-
-              // Then immediately spawn the newly unlocked name in golden!
-              setTimeout(() => {
-                const newPhrase = {
-                  id: nextPhraseIdRef.current++,
-                  data: item,
-                  position: -20,
-                  verticalPosition: Math.random() * 60 + 20,
-                  isNewlyUnlocked: true,
-                  phraseDataId: item.id,
-                };
-                setPhrases((prevPhrases) => [...prevPhrases, newPhrase]);
-                setTotalPhrasesAppeared((prevTotal) => prevTotal + 1);
-
-                // Increment the counter for this newly unlocked name
-                setNewlyUnlockedAsmaNames((prev2) => ({
-                  ...prev2,
-                  [item.id]: (prev2[item.id] || 0) + 1,
-                }));
-              }, 100);
-
-              return updated;
-            });
-          }
+        if (currentMode === "focus") {
+          setNewlyUnlockedPhrases((prev) => {
+            const updated = { ...prev, [item.id]: 0 };
+            setTimeout(() => {
+              const newPhrase = buildFallingPhrase(
+                item,
+                nextPhraseIdRef.current++,
+                [],
+                true,
+              );
+              setPhrases((prevPhrases) => [...prevPhrases, newPhrase]);
+              setTotalPhrasesAppeared((prevTotal) => prevTotal + 1);
+              setNewlyUnlockedPhrases((prev2) => ({
+                ...prev2,
+                [item.id]: (prev2[item.id] || 0) + 1,
+              }));
+            }, 100);
+            return updated;
+          });
+        } else if (currentMode === "asma") {
+          setNewlyUnlockedAsmaNames((prev) => {
+            const updated = { ...prev, [item.id]: 0 };
+            setTimeout(() => {
+              const newPhrase = buildFallingPhrase(
+                item,
+                nextPhraseIdRef.current++,
+                [],
+                true,
+              );
+              setPhrases((prevPhrases) => [...prevPhrases, newPhrase]);
+              setTotalPhrasesAppeared((prevTotal) => prevTotal + 1);
+              setNewlyUnlockedAsmaNames((prev2) => ({
+                ...prev2,
+                [item.id]: (prev2[item.id] || 0) + 1,
+              }));
+            }, 100);
+            return updated;
+          });
         }
       });
 
       setPhrases((prev) => {
         const speed = getSpeed();
-        const updated = prev.map((p) => ({
-          ...p,
-          position: p.position + speed,
-        }));
 
-        // Check for missed phrases
-        const missed = updated.filter((p) => p.position > 110);
+        // Pure: move phrases down and split into remaining / missed
+        const { remaining, missed } = tickPhrases(prev, speed);
+
         if (missed.length > 0) {
-          // Handle misses: smart sound + game ending logic
           setConsecutiveMisses((prevMisses) => {
             const newMisses = prevMisses + missed.length;
 
@@ -2085,44 +1874,18 @@ const ZikrGame = () => {
               `[MISS CHECK] Mode: ${gameModeRef.current}, Consecutive misses: ${prevMisses} → ${newMisses}`,
             );
 
-            // Smart miss sound: Mode-specific
-            const currentMode = gameModeRef.current;
-            let shouldPlaySound = false;
-
-            if (currentMode === "tasbih") {
-              // Tasbih: Sound on 4th and 7th miss only
-              if (
-                (prevMisses < 4 && newMisses >= 4) ||
-                (prevMisses < 7 && newMisses >= 7)
-              ) {
-                shouldPlaySound = true;
-              }
-            } else {
-              // Focus & Asma: Sound on 3rd miss only
-              if (prevMisses < 3 && newMisses >= 3) {
-                shouldPlaySound = true;
-              }
-            }
-
-            if (shouldPlaySound) {
+            // Pure: should miss sound play?
+            if (shouldPlayMissSound(gameModeRef.current, prevMisses, newMisses)) {
               missed.forEach(() => playSound("phraseMiss"));
               console.log(
-                `[SOUND] Playing miss sound (${currentMode} mode, miss #${newMisses})`,
+                `[SOUND] Playing miss sound (${gameModeRef.current} mode, miss #${newMisses})`,
               );
             }
 
-            // Game ending logic based on mode
-            // Tasbih Mode: 10 consecutive misses
-            if (gameModeRef.current === "tasbih" && newMisses >= 10) {
+            // Pure: should game end?
+            if (shouldEndGame(gameModeRef.current, newMisses)) {
               console.log(
-                `[GAME END] Tasbih: 10 consecutive misses reached! Ending game...`,
-              );
-              setTimeout(() => endGame(), 100);
-            }
-            // Focus & Asma Modes: 5 consecutive misses
-            else if (gameModeRef.current !== "tasbih" && newMisses >= 5) {
-              console.log(
-                `[GAME END] ${gameModeRef.current}: 5 consecutive misses reached! Ending game...`,
+                `[GAME END] ${gameModeRef.current}: ${newMisses} consecutive misses reached! Ending game...`,
               );
               setTimeout(() => endGame(), 100);
             }
@@ -2130,7 +1893,6 @@ const ZikrGame = () => {
             return newMisses;
           });
 
-          // Update lives (only for non-Tasbih modes)
           if (gameModeRef.current !== "tasbih") {
             setLives((prevLives) => Math.max(0, prevLives - missed.length));
           }
@@ -2141,17 +1903,12 @@ const ZikrGame = () => {
           }));
         }
 
-        // Remove off-screen phrases
-        const remaining = updated.filter((p) => p.position <= 110);
-
-        // Consistent spawn frequency throughout the game - MORE INTENSE!
-        const targetPhrases = 4; // Keep 4 phrases on screen consistently
-        const spawnProbability = 0.95; // 95% chance to spawn when below target
-
         // Maintain target number of phrases on screen
+        const targetPhrases = 4;
+        const spawnProbability = 0.95;
+
         if (remaining.length < targetPhrases) {
           spawnPhrase();
-          // Spawn one more if significantly below target
           if (remaining.length < targetPhrases - 1) {
             setTimeout(() => spawnPhrase(), 200);
           }
@@ -2438,31 +2195,22 @@ const ZikrGame = () => {
 
   // End game
   const endGame = () => {
-    // Play completion sound
     playSound("completion");
-
     stopGameLoop();
-    const duration = gameStartTimeRef.current
-      ? Math.floor((Date.now() - gameStartTimeRef.current) / 1000)
-      : 0;
 
-    // Calculate session score from ALL modes
-    let finalSessionScore = 0;
-    if (gameMode === "focus") {
-      finalSessionScore = sessionScoreRef.current; // Use ref for Focus mode
-    } else if (gameMode === "asma") {
-      finalSessionScore = asmaSessionScore; // Asma mode points
-    } else if (gameMode === "tasbih") {
-      finalSessionScore = tasbihSessionScore; // Tasbih mode points
-    }
-
-    const newTotalPoints = totalPoints + finalSessionScore;
-    setTotalPoints(newTotalPoints);
-
-    const accuracy = calculatePercentage(
-      sessionStats.totalTaps,
-      sessionStats.totalTaps + sessionStats.missedPhrases,
-    );
+    // Pure: compute all end-of-game stats in one call
+    const { finalSessionScore, newTotalPoints, accuracy, duration } =
+      computeEndGameStats(
+        gameMode,
+        {
+          focus: sessionScoreRef.current,
+          asma: asmaSessionScore,
+          tasbih: tasbihSessionScore,
+        },
+        totalPoints,
+        gameStartTimeRef.current,
+        sessionStats,
+      );
 
     console.log("[END GAME] Saving progress with:");
     console.log("  - Game Mode:", gameMode);
@@ -2475,7 +2223,8 @@ const ZikrGame = () => {
     console.log("  - Accuracy:", accuracy);
     console.log("  - Current User:", currentUser?.username);
 
-    // Save with duration, accuracy, and session score for achievements
+    setTotalPoints(newTotalPoints);
+
     const newAchievementEarned = saveProgress(
       newTotalPoints,
       duration,
@@ -2489,20 +2238,18 @@ const ZikrGame = () => {
       ...prev,
       accuracy,
       duration,
-      newAchievementEarned, // Track if new achievement was earned
+      newAchievementEarned,
     }));
 
     setScreen("stats");
 
-    // ✨ Set a random Zikr Fact for the results screen
     const randomFact =
       ZIKR_FACTS[Math.floor(Math.random() * ZIKR_FACTS.length)];
     setCurrentZikrFact(randomFact);
 
-    // Check if any virtues should be shown after session
     setTimeout(() => {
       checkAndShowVirtue(phraseTapCounts);
-    }, 2000); // Show virtue after 2 seconds
+    }, 2000);
   };
 
   // ============================================
