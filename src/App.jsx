@@ -29,6 +29,13 @@ import {
   ACHIEVEMENTS,
   ZIKR_FACTS,
   getPhraseColor,
+  STARTING_LIVES,
+  DEFAULT_TASBIH_TARGET,
+  TARGET_PHRASES_ON_SCREEN,
+  SPAWN_PROBABILITY,
+  BISMILLAH_FORCE_SPAWN_COUNT,
+  ASMA_POINTS_PER_TAP,
+  GAME_LOOP_INTERVAL_MS,
 } from "./constants";
 import {
   getUnlockedPhraseIds,
@@ -181,7 +188,7 @@ const ZikrGame = () => {
   const [sessionScore, setSessionScore] = useState(0); // current session (Focus mode)
   const [asmaSessionScore, setAsmaSessionScore] = useState(0); // current session (Names mode)
   const [tasbihSessionScore, setTasbihSessionScore] = useState(0); // current session (Tasbih mode)
-  const [lives, setLives] = useState(5);
+  const [lives, setLives] = useState(STARTING_LIVES);
   const [consecutiveMisses, setConsecutiveMisses] = useState(0);
   const [bismillahCount, setBismillahCount] = useState(0); // total Bismillah spawns
   const [bismillahHelpCount, setBismillahHelpCount] = useState(0); // "help" spawns after misses
@@ -211,7 +218,7 @@ const ZikrGame = () => {
   // Flutter screen → tasbih_screen.dart | tasbih_setup_screen.dart
   // ============================================================
   const [tasbihSelectedPhrase, setTasbihSelectedPhrase] = useState(null);
-  const [tasbihTargetCount, setTasbihTargetCount] = useState(100);
+  const [tasbihTargetCount, setTasbihTargetCount] = useState(DEFAULT_TASBIH_TARGET);
   const [tasbihCurrentCount, setTasbihCurrentCount] = useState(0);
   const [tasbihTotalCounts, setTasbihTotalCounts] = useState({}); // { phraseId: totalCount } — persisted to Firebase
 
@@ -267,7 +274,6 @@ const ZikrGame = () => {
   const isFadingRef = useRef(false); // prevents fade overlap
 
   // Sound effects
-  const [soundsLoaded, setSoundsLoaded] = useState(false);
   const [soundsEnabled, setSoundsEnabled] = useState(true);
   const soundRefs = useRef({
     tapSuccess: null,
@@ -285,7 +291,6 @@ const ZikrGame = () => {
   // Phrase audio (zikr_1.mp3 → zikr_27.mp3)
   const [phraseAudioEnabled, setPhraseAudioEnabled] = useState(true);
   const [phraseAudioVolume, setPhraseAudioVolume] = useState(0.7); // 70% default
-  const [phraseAudioLoaded, setPhraseAudioLoaded] = useState(false);
   const phraseAudioRefs = useRef({}); // { 1: AudioObject, 2: AudioObject, ... }
 
   // ============================================================
@@ -1387,7 +1392,6 @@ const ZikrGame = () => {
         if (sound) sound.preload = "auto";
       });
 
-      setSoundsLoaded(true);
       console.log("[SOUNDS] All sound effects loaded successfully!");
     } catch (error) {
       console.error("[SOUNDS] Error loading sound effects:", error);
@@ -1417,7 +1421,6 @@ const ZikrGame = () => {
       }
       console.log("[PHRASE AUDIO] ✅ Loaded 99 Asma ul Husna audio files");
 
-      setPhraseAudioLoaded(true);
       console.log(
         "[PHRASE AUDIO] 🎵 All 126 audio files loaded successfully! (27 zikr + 99 Asma)",
       );
@@ -1428,26 +1431,26 @@ const ZikrGame = () => {
 
   // Play phrase audio (Zikr and Asma!)
   const playPhraseAudio = (phraseId) => {
-    if (!phraseAudioEnabled || !phraseAudioLoaded) return;
-
-    const audio = phraseAudioRefs.current[phraseId];
-    if (!audio) {
-      console.warn(`[PHRASE AUDIO] Audio for phrase ${phraseId} not found`);
+    if (!phraseAudioEnabled) {
+      console.log(`[PHRASE AUDIO] Skipped — phraseAudioEnabled is false`);
       return;
     }
 
+    const audio = phraseAudioRefs.current[phraseId];
+    if (!audio) {
+      console.warn(`[PHRASE AUDIO] No audio element for phraseId=${phraseId}`);
+      return;
+    }
+
+    console.log(`[PHRASE AUDIO] Playing phraseId=${phraseId}, src="${audio.src}", volume=${phraseAudioVolume}`);
+
     try {
-      // Clone and play (allows overlapping)
-      const audioClone = audio.cloneNode();
+      const audioClone = new Audio(audio.src);
       audioClone.volume = phraseAudioVolume;
       audioClone.play().catch((err) => {
-        console.log(
-          `[PHRASE AUDIO] Play prevented for phrase ${phraseId}:`,
-          err,
-        );
+        console.warn(`[PHRASE AUDIO] play() rejected for phrase ${phraseId}:`, err);
       });
 
-      // Log which type of audio is playing
       if (phraseId >= 1 && phraseId <= 27) {
         console.log(`[PHRASE AUDIO] 🔊 Playing zikr_${phraseId}.mp3`);
       } else if (phraseId >= 101 && phraseId <= 200) {
@@ -1460,20 +1463,24 @@ const ZikrGame = () => {
 
   // Play a sound effect
   const playSound = (soundName) => {
-    if (!soundsEnabled || !soundsLoaded) return;
-
-    const sound = soundRefs.current[soundName];
-    if (!sound) {
-      console.warn(`[SOUNDS] Sound "${soundName}" not found`);
+    if (!soundsEnabled) {
+      console.log(`[SOUNDS] Skipped — soundsEnabled is false`);
       return;
     }
 
+    const sound = soundRefs.current[soundName];
+    if (!sound) {
+      console.warn(`[SOUNDS] Sound "${soundName}" not found in soundRefs`);
+      return;
+    }
+
+    console.log(`[SOUNDS] Playing ${soundName}, src="${sound.src}", volume=${sound.volume}`);
+
     try {
-      // Clone and play (allows overlapping sounds)
-      const soundClone = sound.cloneNode();
+      const soundClone = new Audio(sound.src);
       soundClone.volume = sound.volume;
       soundClone.play().catch((err) => {
-        console.log(`[SOUNDS] Play prevented for ${soundName}:`, err);
+        console.warn(`[SOUNDS] play() rejected for ${soundName}:`, err);
       });
     } catch (error) {
       console.error(`[SOUNDS] Error playing ${soundName}:`, error);
@@ -1582,7 +1589,7 @@ const ZikrGame = () => {
       sessionScoreRef.current = 0;
       setAsmaSessionScore(0); // Reset Asma session score
       setTasbihSessionScore(0); // Reset Tasbih session score
-      setLives(5);
+      setLives(STARTING_LIVES);
       setConsecutiveMisses(0);
 
       // ✅ BUG FIX: Only reset Bismillah counter for BRAND NEW users
@@ -1596,9 +1603,9 @@ const ZikrGame = () => {
         );
       } else {
         // Returning user or already played - keep ref at 3+ to prevent Bismillah spam
-        if (bismillahCountRef.current < 3) {
-          bismillahCountRef.current = 3;
-          setBismillahCount(3);
+        if (bismillahCountRef.current < BISMILLAH_FORCE_SPAWN_COUNT) {
+          bismillahCountRef.current = BISMILLAH_FORCE_SPAWN_COUNT;
+          setBismillahCount(BISMILLAH_FORCE_SPAWN_COUNT);
         }
         console.log(
           "[BISMILLAH FIX] Returning user - Bismillah spawns disabled",
@@ -1708,8 +1715,8 @@ const ZikrGame = () => {
 
         // ONLY set Bismillah count for Focus Mode
         if (mode === "focus") {
-          setBismillahCount(3); // Set to 3 since we spawned 3 Bismillahs initially
-          bismillahCountRef.current = 3; // Set ref immediately for synchronous access
+          setBismillahCount(BISMILLAH_FORCE_SPAWN_COUNT);
+          bismillahCountRef.current = BISMILLAH_FORCE_SPAWN_COUNT;
           console.log(
             "[FOCUS MODE] Set bismillahCountRef to 3 after initial spawns",
           );
@@ -1875,7 +1882,7 @@ const ZikrGame = () => {
       });
 
       setPhrases((prev) => {
-        const speed = getSpeed();
+        const speed = getSpeed(gameModeRef.current, gameStartTimeRef);
 
         // Pure: move phrases down and split into remaining / missed
         const { remaining, missed } = tickPhrases(prev, speed);
@@ -1918,8 +1925,8 @@ const ZikrGame = () => {
         }
 
         // Maintain target number of phrases on screen
-        const targetPhrases = 4;
-        const spawnProbability = 0.95;
+        const targetPhrases = TARGET_PHRASES_ON_SCREEN;
+        const spawnProbability = SPAWN_PROBABILITY;
 
         if (remaining.length < targetPhrases) {
           spawnPhrase();
@@ -1935,7 +1942,7 @@ const ZikrGame = () => {
 
         return remaining;
       });
-    }, 50);
+    }, GAME_LOOP_INTERVAL_MS);
   };
 
   // Stop game loop
@@ -2001,7 +2008,7 @@ const ZikrGame = () => {
     // Asma Mode: Increment tap counter for 33-tap unlock system + Award points
     if (gameMode === "asma") {
       // Award 10 points per tap
-      setAsmaSessionScore((prev) => prev + 10);
+      setAsmaSessionScore((prev) => prev + ASMA_POINTS_PER_TAP);
 
       setAsmaTotalTaps((prev) => {
         const newTaps = prev + 1;

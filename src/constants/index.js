@@ -9,3 +9,4 @@ export { NAMES_OF_ALLAH } from "./asma-ul-husna";
 export { ACHIEVEMENTS } from "./achievements";
 export { ZIKR_FACTS } from "./zikr-facts";
 export { getPhraseColor } from "./phraseColors";
+export * from "./gameConfig";

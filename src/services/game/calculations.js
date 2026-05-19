@@ -9,6 +9,16 @@
  */
 
 import { ZIKR_PHRASES, NAMES_OF_ALLAH } from "../../constants";
+import {
+  ASMA_INITIAL_UNLOCKED,
+  ASMA_TAPS_PER_UNLOCK,
+  POINTS_PER_BACKGROUND,
+  MAX_BACKGROUND_INDEX,
+  POINTS_PER_FREEZE_TOKEN,
+  MAX_FREEZE_TOKENS,
+  PHRASE_SPEED_FOCUS,
+  PHRASE_SPEED_ASMA,
+} from "../../constants/gameConfig";
 
 /**
  * Get unlocked phrase IDs based on total points
@@ -26,12 +36,9 @@ export const getUnlockedPhraseIds = (points) => {
  * @returns {number[]} Array of unlocked Asma IDs
  */
 export const getUnlockedAsmaIds = (tapCount) => {
-  // Start with 2 names: Ya Allah (101) and Ya Rabb (102)
-  // Every 33 taps unlocks the next name
-  const baseUnlocked = 2;
-  const additionalUnlocked = Math.floor(tapCount / 33);
+  const additionalUnlocked = Math.floor(tapCount / ASMA_TAPS_PER_UNLOCK);
   const totalUnlocked = Math.min(
-    baseUnlocked + additionalUnlocked,
+    ASMA_INITIAL_UNLOCKED + additionalUnlocked,
     NAMES_OF_ALLAH.length,
   );
 
@@ -55,8 +62,7 @@ export const getAvailablePhrases = (totalPoints) => {
  * @returns {number} Background index (1-11)
  */
 export const getBackgroundIndex = (score) => {
-  // 0-799 → 1, 800-1599 → 2, 1600-2399 → 3, ... 8000+ → 11
-  return Math.min(Math.floor(score / 800) + 1, 11);
+  return Math.min(Math.floor(score / POINTS_PER_BACKGROUND) + 1, MAX_BACKGROUND_INDEX);
 };
 
 /**
@@ -66,8 +72,10 @@ export const getBackgroundIndex = (score) => {
  * @returns {number} Number of freeze tokens (0-10)
  */
 export const calculateFreezeTokens = (totalPoints) => {
-  const tokensEarned = Math.floor(totalPoints / 30000);
-  return Math.min(tokensEarned, 10); // Max 10 tokens
+  return Math.min(
+    Math.floor(totalPoints / POINTS_PER_FREEZE_TOKEN),
+    MAX_FREEZE_TOKENS,
+  );
 };
 
 /**
@@ -126,13 +134,7 @@ export const getGameBackground = (totalPoints, sessionScore) => {
  * @returns {number} Speed multiplier (0.3 for Asma, 0.5 for Focus/Tasbih)
  */
 export const getSpeed = (gameMode, gameStartTimeRef = null) => {
-  if (gameStartTimeRef && !gameStartTimeRef.current) return 0.3;
-
-  // Asma ul Husna Mode: Fixed speed at 0.3 (slower, more contemplative)
-  if (gameMode === "asma") {
-    return 0.3;
-  }
-
-  // Focus and Tasbih Modes: Fixed speed at 0.5 (running pace)
-  return 0.5;
+  if (gameStartTimeRef && !gameStartTimeRef.current) return PHRASE_SPEED_ASMA;
+  if (gameMode === "asma") return PHRASE_SPEED_ASMA;
+  return PHRASE_SPEED_FOCUS;
 };

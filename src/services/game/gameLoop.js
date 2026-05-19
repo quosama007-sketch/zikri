@@ -6,6 +6,24 @@
  */
 
 import { ZIKR_PHRASES, NAMES_OF_ALLAH } from "../../constants";
+import {
+  BISMILLAH_FORCE_SPAWN_COUNT,
+  NEWLY_UNLOCKED_GOLDEN_APPEARANCES,
+  PHRASE_START_POSITION,
+  PHRASE_REMOVAL_POSITION,
+  PHRASE_VERTICAL_MIN,
+  PHRASE_VERTICAL_RANGE,
+  PHRASE_VERTICAL_SPACING,
+  PHRASE_OVERLAP_MAX_ATTEMPTS,
+  PHRASE_FALLBACK_LANES,
+  FOCUS_ASMA_MISS_SOUND_AT,
+  TASBIH_MISS_SOUND_AT,
+  FOCUS_ASMA_GAME_END_MISSES,
+  TASBIH_GAME_END_MISSES,
+  SPAWN_WEIGHT_2_WORD,
+  SPAWN_WEIGHT_3_WORD,
+  SPAWN_WEIGHT_4_WORD,
+} from "../../constants/gameConfig";
 import { getUnlockedAsmaIds } from "./calculations";
 import { calculatePercentage } from "../utilities";
 
@@ -59,7 +77,7 @@ export const computeSpawnAvailableItems = (
 
 /**
  * Select which item to spawn using probability distribution.
- * Focus: force Bismillah for first 3 spawns, then weight by word count.
+ * Focus: force Bismillah for first N spawns, then weight by word count.
  * Asma: weight by word count.
  * Tasbih: always the selected phrase.
  * Flutter → GameLoopService.selectItemToSpawn()
@@ -83,9 +101,9 @@ export const selectItemToSpawn = (mode, availableItems, bismillahCount) => {
     return item;
   }
 
-  if (mode === "focus" && bismillahCount < 3) {
+  if (mode === "focus" && bismillahCount < BISMILLAH_FORCE_SPAWN_COUNT) {
     console.log(
-      `[BISMILLAH] Selecting initial Bismillah (count: ${bismillahCount + 1}/3)`,
+      `[BISMILLAH] Selecting initial Bismillah (count: ${bismillahCount + 1}/${BISMILLAH_FORCE_SPAWN_COUNT})`,
     );
     return ZIKR_PHRASES[0];
   }
@@ -129,12 +147,12 @@ export const selectItemToSpawn = (mode, availableItems, bismillahCount) => {
   const rand = Math.random();
   let selected;
 
-  if (rand < 0.9 && twoWordItems.length > 0) {
+  if (rand < SPAWN_WEIGHT_2_WORD && twoWordItems.length > 0) {
     selected = twoWordItems[Math.floor(Math.random() * twoWordItems.length)];
-  } else if (rand < 0.95 && threeWordItems.length > 0) {
+  } else if (rand < SPAWN_WEIGHT_3_WORD && threeWordItems.length > 0) {
     selected =
       threeWordItems[Math.floor(Math.random() * threeWordItems.length)];
-  } else if (rand < 0.97 && fourWordItems.length > 0) {
+  } else if (rand < SPAWN_WEIGHT_4_WORD && fourWordItems.length > 0) {
     selected = fourWordItems[Math.floor(Math.random() * fourWordItems.length)];
   } else if (longerItems.length > 0) {
     selected = longerItems[Math.floor(Math.random() * longerItems.length)];
@@ -157,7 +175,7 @@ export const selectItemToSpawn = (mode, availableItems, bismillahCount) => {
 
 /**
  * Check if an item should appear with the golden "newly unlocked" highlight.
- * Shows golden for its first 3 appearances after unlock.
+ * Shows golden for its first N appearances after unlock.
  * Flutter → GameLoopService.isNewlyUnlockedItem()
  * @param {number} itemId
  * @param {Object} newlyUnlockedMap - { [id]: appearanceCount }
@@ -165,7 +183,7 @@ export const selectItemToSpawn = (mode, availableItems, bismillahCount) => {
  */
 export const isNewlyUnlockedItem = (itemId, newlyUnlockedMap) => {
   const count = newlyUnlockedMap[itemId];
-  return count !== undefined && count < 3;
+  return count !== undefined && count < NEWLY_UNLOCKED_GOLDEN_APPEARANCES;
 };
 
 /**
@@ -181,27 +199,28 @@ export const isNewlyUnlockedItem = (itemId, newlyUnlockedMap) => {
 export const buildFallingPhrase = (item, nextId, currentPhrases, isNewlyUnlocked) => {
   let verticalPosition;
   let attempts = 0;
-  const maxAttempts = 20;
 
   do {
-    verticalPosition = Math.random() * 60 + 20;
+    verticalPosition =
+      Math.random() * PHRASE_VERTICAL_RANGE + PHRASE_VERTICAL_MIN;
     const hasOverlap = currentPhrases.some((p) => {
-      if (p.position > 100 || p.position < -25) return false;
-      return Math.abs(p.verticalPosition - verticalPosition) < 15;
+      if (p.position > PHRASE_REMOVAL_POSITION || p.position < PHRASE_START_POSITION - 5)
+        return false;
+      return Math.abs(p.verticalPosition - verticalPosition) < PHRASE_VERTICAL_SPACING;
     });
     if (!hasOverlap) break;
     attempts++;
-  } while (attempts < maxAttempts);
+  } while (attempts < PHRASE_OVERLAP_MAX_ATTEMPTS);
 
-  if (attempts >= maxAttempts) {
-    const lanes = [25, 50, 75];
-    verticalPosition = lanes[Math.floor(Math.random() * lanes.length)];
+  if (attempts >= PHRASE_OVERLAP_MAX_ATTEMPTS) {
+    verticalPosition =
+      PHRASE_FALLBACK_LANES[Math.floor(Math.random() * PHRASE_FALLBACK_LANES.length)];
   }
 
   return {
     id: nextId,
     data: item,
-    position: -20,
+    position: PHRASE_START_POSITION,
     verticalPosition,
     isNewlyUnlocked,
     phraseDataId: item.id,
@@ -220,8 +239,8 @@ export const buildFallingPhrase = (item, nextId, currentPhrases, isNewlyUnlocked
 export const tickPhrases = (phrases, speed) => {
   const updated = phrases.map((p) => ({ ...p, position: p.position + speed }));
   return {
-    remaining: updated.filter((p) => p.position <= 110),
-    missed: updated.filter((p) => p.position > 110),
+    remaining: updated.filter((p) => p.position <= PHRASE_REMOVAL_POSITION),
+    missed: updated.filter((p) => p.position > PHRASE_REMOVAL_POSITION),
   };
 };
 
@@ -246,8 +265,8 @@ export const checkNewlyUnlockedItems = (
 
 /**
  * Whether the miss sound should play for this miss event.
- * Focus/Asma: plays on the 3rd consecutive miss.
- * Tasbih: plays on the 4th and 7th.
+ * Focus/Asma: plays on the Nth consecutive miss.
+ * Tasbih: plays on specific miss counts.
  * Flutter → GameLoopService.shouldPlayMissSound()
  * @param {string} mode
  * @param {number} prevMisses
@@ -256,24 +275,23 @@ export const checkNewlyUnlockedItems = (
  */
 export const shouldPlayMissSound = (mode, prevMisses, newMisses) => {
   if (mode === "tasbih") {
-    return (
-      (prevMisses < 4 && newMisses >= 4) || (prevMisses < 7 && newMisses >= 7)
+    return TASBIH_MISS_SOUND_AT.some(
+      (threshold) => prevMisses < threshold && newMisses >= threshold,
     );
   }
-  return prevMisses < 3 && newMisses >= 3;
+  return prevMisses < FOCUS_ASMA_MISS_SOUND_AT && newMisses >= FOCUS_ASMA_MISS_SOUND_AT;
 };
 
 /**
  * Whether the game should end due to consecutive misses.
- * Tasbih: 10 misses. Focus/Asma: 5 misses.
  * Flutter → GameLoopService.shouldEndGame()
  * @param {string} mode
  * @param {number} consecutiveMisses
  * @returns {boolean}
  */
 export const shouldEndGame = (mode, consecutiveMisses) => {
-  if (mode === "tasbih") return consecutiveMisses >= 10;
-  return consecutiveMisses >= 5;
+  if (mode === "tasbih") return consecutiveMisses >= TASBIH_GAME_END_MISSES;
+  return consecutiveMisses >= FOCUS_ASMA_GAME_END_MISSES;
 };
 
 // ─── Session start / end ──────────────────────────────────────────────────────
