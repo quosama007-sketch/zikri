@@ -1,10 +1,15 @@
+// ⚠️  WEB ONLY — DO NOT PORT DIRECTLY TO FLUTTER
+// Uses HTMLAudioElement and the Web Audio API (browser-only).
+// Flutter equivalent: `just_audio` or `audioplayers` package.
+//   - loadSoundEffects()  → preload assets via AssetSource in AudioPlayer
+//   - playSound()         → AudioPlayer.play(AssetSource('audio/tap_success.mp3'))
+//   - cloneNode() pattern → create a new AudioPlayer per concurrent sound
+// Replace every function in this file with audioplayers/just_audio equivalents.
+
 /**
  * Sound Effects Service
  *
  * Handles sound effect loading and playback for game interactions.
- *
- * NOTE: Uses Web Audio API - web-specific implementation.
- * For mobile (Flutter/React Native), these will need platform-specific implementations.
  */
 
 /**

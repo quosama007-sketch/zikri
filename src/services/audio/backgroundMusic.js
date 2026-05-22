@@ -1,10 +1,13 @@
+// ⚠️  WEB ONLY — DO NOT PORT DIRECTLY TO FLUTTER
+// Uses HTMLAudioElement and the Web Audio API (browser-only).
+// Flutter equivalent: `just_audio` package for playback + volume fading via
+//                     AudioPlayer.setVolume() inside a Timer loop.
+// Replace every function in this file with just_audio equivalents.
+
 /**
  * Background Music Service
  *
  * Handles background music playback, transitions, and fading.
- *
- * NOTE: These functions use Web Audio API and are web-specific.
- * For mobile (Flutter/React Native), these will need platform-specific implementations.
  */
 
 /**

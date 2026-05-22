@@ -1,3 +1,9 @@
+// ⚠️  WEB ONLY — DO NOT PORT DIRECTLY TO FLUTTER
+// Uses direct DOM manipulation (document.createElement, document.body.appendChild).
+// Flutter equivalent: custom AnimationController + Positioned widgets, or
+//                     the `confetti` package for particle effects.
+// Replace every function in this file with Flutter widget animations.
+
 /**
  * Game Visual Effects Service
  *
@@ -6,9 +12,6 @@
  * - Fireworks celebrations
  * - Particle bursts
  * - Screen flashes
- *
- * NOTE: These use DOM manipulation and are web-specific.
- * For mobile (Flutter/React Native), these will need platform-specific implementations.
  */
 
 /**

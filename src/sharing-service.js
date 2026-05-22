@@ -1,3 +1,11 @@
+// ⚠️  WEB ONLY — DO NOT PORT DIRECTLY TO FLUTTER
+// Uses browser-only APIs: HTMLCanvasElement, navigator.share (Web Share API),
+//                         URL.createObjectURL, document.createElement('a').
+// Flutter equivalent: `share_plus` package for sharing text/images.
+//   - Canvas image generation → `screenshot` or `widgets_to_image` package
+//   - navigator.share()       → Share.shareXFiles() from share_plus
+// Replace this entire file with a Flutter sharing service.
+
 // 📱 SOCIAL SHARING SERVICE
 // Generate beautiful sharing cards and handle social media sharing
 
